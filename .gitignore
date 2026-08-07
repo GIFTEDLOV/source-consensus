@@ -1,0 +1,15 @@
+!.env.example
+*.egg-info/
+*.py[cod]
+.DS_Store
+.env
+.env.*
+.mutation-in-progress
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.venv/
+__pycache__/
+artifacts/
+runs/
+venv/

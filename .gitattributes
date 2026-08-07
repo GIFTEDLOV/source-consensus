@@ -1,0 +1,18 @@
+# Normalise everything to LF in the repository. The fixture corpus is served as commit-pinned
+# evidence over HTTPS and is hashed in MANIFEST.sha256, so line endings are a correctness concern.
+* text=auto eol=lf
+
+# Force LF for the paths that are hashed, linted, or fetched by validators.
+contracts/**   text eol=lf
+fixtures/**    text eol=lf
+tools/**       text eol=lf
+docs/**        text eol=lf
+examples/**    text eol=lf
+.github/**     text eol=lf
+*.py           text eol=lf
+*.md           text eol=lf
+*.json         text eol=lf
+*.yml          text eol=lf
+*.toml         text eol=lf
+*.txt          text eol=lf
+*.sha256       text eol=lf
