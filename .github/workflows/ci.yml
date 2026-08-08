@@ -173,6 +173,22 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install -r requirements-dev.txt "eth-hash[pycryptodome]==0.7.1"
+
+      # genlayer-test 0.29.2 resolves its runner tarball from the LATEST genvm release and
+      # expects an asset named genvm-universal.tar.xz. Newer releases no longer publish it, so
+      # the download 404s and every direct-mode test fails with an error that looks like a
+      # contract failure and is not. tools/fetch_runner.py pins the release and refuses to
+      # install a tarball that does not contain the runner this contract declares.
+      - name: Cache GenVM runner
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/gltest-direct
+          key: genvm-universal-v0.2.16-1jb45aa8
+      - name: Seed GenVM runner cache
+        run: python tools/fetch_runner.py
+      - name: Verify the pinned runner
+        run: python tools/fetch_runner.py --verify
+
       - run: pytest tests/ -v --tb=short
 
   # Proves the suite would notice if the load-bearing behaviours broke. A green suite proves the
@@ -188,6 +204,22 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install -r requirements-dev.txt "eth-hash[pycryptodome]==0.7.1"
+
+      # genlayer-test 0.29.2 resolves its runner tarball from the LATEST genvm release and
+      # expects an asset named genvm-universal.tar.xz. Newer releases no longer publish it, so
+      # the download 404s and every direct-mode test fails with an error that looks like a
+      # contract failure and is not. tools/fetch_runner.py pins the release and refuses to
+      # install a tarball that does not contain the runner this contract declares.
+      - name: Cache GenVM runner
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/gltest-direct
+          key: genvm-universal-v0.2.16-1jb45aa8
+      - name: Seed GenVM runner cache
+        run: python tools/fetch_runner.py
+      - name: Verify the pinned runner
+        run: python tools/fetch_runner.py --verify
+
       - run: python tools/mutation_test.py
       - name: Assert the contract was restored
         run: git diff --exit-code -- contracts/
