@@ -1,0 +1,28 @@
+# SourceConsensus reproducibility manifest
+# sha256 over raw bytes. Regenerate with: python tools/source_hash.py --write
+# Verified in CI by: python tools/source_hash.py --check
+32c795eb56f720b214d67313d3dc1a10ace0d42686b08cc57c141e38bfd30ddf  fixtures/corpus/01-all-agree/source-0-release-page.md
+8bc4de1b9fa70b1940a9fdaceb68265677c96117d160690629086c76135bdd05  fixtures/corpus/01-all-agree/source-1-changelog.md
+9bdc58c09d909c0f9476a35bc4e864f37182df22a0a5041b6f5a43196b3253b1  fixtures/corpus/01-all-agree/source-2-docs-announcement.md
+d7864c8ffefcce3459bfb0d016bba8d2b65b9a634b8c17e4d9e09e00f8cb9a45  fixtures/corpus/02-majority-one-outlier/source-0-release-page.md
+9c7827c81fd5027c10c1bda1f3c76e094f5f087fb03b29cf18dcb9c9a072d0e6  fixtures/corpus/02-majority-one-outlier/source-1-changelog.md
+dcb57abdb3456459fa8100989378ce243bea6fb707f5f3fc15b3ad0ae4671262  fixtures/corpus/02-majority-one-outlier/source-2-docs.md
+5df0dde24313b8818178143604d706b8dcb6cb3a2423303fc6f746746dca54b0  fixtures/corpus/02-majority-one-outlier/source-3-mirror-blog.md
+69984a9576504c9457599e817d425663db8ec3eb98ae7a34ed7dd570debda1ca  fixtures/corpus/03-two-competing/source-0-release-page.md
+2509f82efac759ee58d6541cf942e6c97050666d55f3a8531a4386a28c96d65b  fixtures/corpus/03-two-competing/source-1-changelog.md
+55e4159eec1f443469070b7656e803af26c57de1c291d426ea2e8e47dafd8526  fixtures/corpus/03-two-competing/source-2-press-release.md
+eb4734b51c714602dbe30f467df0602136326f8a7c8186c28ad9d83a35b499b5  fixtures/corpus/03-two-competing/source-3-docs.md
+e14cf037ec183a2099b0427b3685c161c82d68b015fdee658e961aad00ecc671  fixtures/corpus/04-insufficient-evidence/source-0-landing.md
+a026a681ab4effb0b26d5900be2ead5f3edb97c72aad74fedd15404ab896a7ed  fixtures/corpus/04-insufficient-evidence/source-1-docs-index.md
+c9d437ed761c1b63a2cfae8fb2607f7a322ee0f7067726bc1f726e9e09b62776  fixtures/corpus/04-insufficient-evidence/source-2-release-page.md
+6ac955b9ac61bf62762dc23795f1f3e7c76023f72d6fda90e327dd5eca479565  fixtures/corpus/05-source-unavailable/source-0-release-page.md
+2616287208f54ea1228398c4662070ea80e4ac2dea0fe55e16f7d668210e0c9a  fixtures/corpus/05-source-unavailable/source-1-changelog.md
+bbd1819d7477c7ee2dab0ea9ffd5eb26ffb09f9d75d6b1ffbeb76ebe2a9004c4  fixtures/corpus/06-injection-redefine/source-0-release-page.md
+31845723f1872905619e27332bf1279139197618e54ff77097aeb264e7c49875  fixtures/corpus/06-injection-redefine/source-1-changelog.md
+5897cc041d801d8e97067b16c3ea16d629cfe2f9a5dd6e4dca17456653047ce5  fixtures/corpus/06-injection-redefine/source-2-compromised-mirror.md
+17fba1aaa5f9e09f5a84bbb100de31a880540b4a4192a6d4a6b4263bcfe495b1  fixtures/corpus/07-normalisation-equivalent/source-0-release-page.md
+f16a8bd0a3626f7a35aed5c44405d645df667fa1aca760988782ef1ae0eeb111  fixtures/corpus/07-normalisation-equivalent/source-1-blog.md
+49c520135fdc3ce1261106b2303bb11bb983d47b6a263a9887af03a8ad10fe8c  fixtures/corpus/07-normalisation-equivalent/source-2-docs.md
+f9f171996665c22cdfade94264bb9b24d378326dfd60dcd6b8dd073920f5b205  fixtures/corpus/08-ambiguous-date/source-0-release-page.md
+6ba47c67e9025efa5bbd63d4e08e83712a0a8eeb5a15bbadec74d25c5834e385  fixtures/corpus/08-ambiguous-date/source-1-vague-blog.md
+a3648a3ce37bd29de8c1db5b24604fce7f25023e1cd61369e2f420d882e968c1  fixtures/corpus/08-ambiguous-date/source-2-vague-docs.md

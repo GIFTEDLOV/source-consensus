@@ -1,0 +1,47 @@
+{
+  "id": "02-majority-one-outlier",
+  "category": "majority",
+  "description": "Three official sources agree; one community mirror reports a different date.",
+  "config": {
+    "query_id": "MESHCACHE_4_1_0_RELEASE_DATE",
+    "question": "On what date was version 4.1.0 of Meshcache officially released?",
+    "fact_type": "DATE",
+    "normalization_rules": {},
+    "allowed_enum_values": [],
+    "source_urls": [
+      "https://raw.githubusercontent.com/GIFTEDLOV/source-consensus/7e58293b4b55fcf57dfc5e24d0d8a9f02e6c2d23/fixtures/corpus/02-majority-one-outlier/source-0-release-page.md",
+      "https://raw.githubusercontent.com/GIFTEDLOV/source-consensus/7e58293b4b55fcf57dfc5e24d0d8a9f02e6c2d23/fixtures/corpus/02-majority-one-outlier/source-1-changelog.md",
+      "https://raw.githubusercontent.com/GIFTEDLOV/source-consensus/7e58293b4b55fcf57dfc5e24d0d8a9f02e6c2d23/fixtures/corpus/02-majority-one-outlier/source-2-docs.md",
+      "https://raw.githubusercontent.com/GIFTEDLOV/source-consensus/7e58293b4b55fcf57dfc5e24d0d8a9f02e6c2d23/fixtures/corpus/02-majority-one-outlier/source-3-mirror-blog.md"
+    ],
+    "minimum_supporting_sources": 2,
+    "conflict_threshold": 2
+  },
+  "source_results": [
+    {
+      "source_index": 0,
+      "state": "VALUE",
+      "value": "2026-05-20"
+    },
+    {
+      "source_index": 1,
+      "state": "VALUE",
+      "value": "2026-05-20"
+    },
+    {
+      "source_index": 2,
+      "state": "VALUE",
+      "value": "2026-05-20"
+    },
+    {
+      "source_index": 3,
+      "state": "VALUE",
+      "value": "2026-05-18"
+    }
+  ],
+  "expected": {
+    "status": "CONFIRMED",
+    "normalized_value": "2026-05-20"
+  },
+  "notes": "The outlier has support 1, below conflict_threshold 2, so it does not contest the result -- but it is recorded in conflicting_source_indices rather than discarded. A consumer can see that one source disagreed and go read it."
+}

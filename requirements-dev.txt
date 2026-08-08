@@ -1,0 +1,7 @@
+# Exact pins. See docs/CI.md "Pinned versions".
+# genlayer-test and genlayer-py both require Python >= 3.12; .python-version pins 3.12.
+
+genlayer-test==0.29.2
+genvm-linter==0.11.0
+pytest==8.3.4
+jsonschema==4.23.0

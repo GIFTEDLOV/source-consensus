@@ -1,0 +1,21 @@
+[project]
+name = "source-consensus"
+version = "0.1.0-stage1"
+description = "A reusable GenLayer semantic-oracle primitive: resolve one bounded typed fact from several independent public sources, with the status derived by contract logic rather than by a model."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+
+[project.urls]
+Repository = "https://github.com/GIFTEDLOV/source-consensus"
+
+# The GenVM runner is pinned in the contract header, not here. Stage 2 will pin:
+#   py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6
+# No "latest" or "test" runner alias is used anywhere in this repository.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.gltest]
+contracts_dir = "contracts"

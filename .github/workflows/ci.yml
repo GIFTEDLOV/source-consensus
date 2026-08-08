@@ -1,0 +1,212 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.12"
+  PYTHONUTF8: "1"
+
+jobs:
+  # Makes it impossible for a green badge to imply contract coverage that does not exist.
+  # See docs/CI.md, job 1.
+  stage-guard:
+    name: stage guard
+    runs-on: ubuntu-latest
+    outputs:
+      has_contract: ${{ steps.detect.outputs.has_contract }}
+      has_tests: ${{ steps.detect.outputs.has_tests }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: detect
+        name: Detect repository stage
+        run: |
+          set -euo pipefail
+          contract=$(find contracts -name '*.py' -type f 2>/dev/null | head -1 || true)
+          tests=$(find tests/direct -name 'test_*.py' -type f 2>/dev/null | head -1 || true)
+          has_contract=$([ -n "$contract" ] && echo true || echo false)
+          has_tests=$([ -n "$tests" ] && echo true || echo false)
+          echo "has_contract=$has_contract" >> "$GITHUB_OUTPUT"
+          echo "has_tests=$has_tests" >> "$GITHUB_OUTPUT"
+
+          if [ "$has_contract" = "false" ] && [ "$has_tests" = "true" ]; then
+            echo "::error::Direct-mode tests exist with no contract under test."
+            exit 1
+          fi
+          if [ "$has_contract" = "true" ] && [ "$has_tests" = "false" ]; then
+            echo "::error::A contract exists without direct-mode tests. See docs/BUILD-PLAN.md Stage 3."
+            exit 1
+          fi
+
+          if [ "$has_contract" = "false" ]; then
+            echo "### Stage 1 — research and architecture only" >> "$GITHUB_STEP_SUMMARY"
+            echo "No contract in this repository. **No contract test coverage is claimed by this run.**" >> "$GITHUB_STEP_SUMMARY"
+            echo "Jobs \`lint-contract\`, \`direct-tests\` and \`mutation-tests\` are skipped because their subject does not exist yet." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### Stage 2+ — contract present with direct-mode tests" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  line-endings:
+    name: line endings (LF)
+    needs: stage-guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: python tools/check_line_endings.py
+
+  secret-scan:
+    name: secret scan
+    needs: stage-guard
+    runs-on: ubuntu-latest
+    env:
+      GITLEAKS_VERSION: "8.30.1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # The gitleaks binary is used directly rather than gitleaks-action, because the action
+      # scans only the push range (<base>^..<head>) and that expression is unresolvable when the
+      # base is the repository's root commit -- it then exits 1 having scanned zero bytes, which
+      # looks like a finding and would equally have hidden a real one.
+      - name: Install gitleaks
+        run: |
+          set -euo pipefail
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin gitleaks
+          gitleaks version
+
+      - name: Scan full history
+        run: gitleaks git --no-banner --redact --exit-code 1 .
+
+      - name: Scan working tree
+        run: gitleaks dir --no-banner --redact --exit-code 1 .
+
+  fixtures:
+    name: fixture schema + derivation + URL policy
+    needs: stage-guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      # Stage 1 needs only the schema validator and keccak; the GenLayer toolchain arrives with
+      # the contract.
+      - run: pip install jsonschema==4.23.0 "eth-hash[pycryptodome]==0.7.1"
+      - run: python tools/validate_fixtures.py
+
+      # The fixture cases are generated from tools/make_fixtures.py so that the pinned commit
+      # appears in exactly one place. If a case was hand-edited, regeneration produces a diff.
+      - name: Assert the generated cases are current
+        run: |
+          set -euo pipefail
+          pin=$(python - <<'PY'
+          import json, re, pathlib
+          case = json.loads(next(pathlib.Path("fixtures/cases").glob("*.json")).read_text())
+          print(re.search(r"/([0-9a-f]{40})/", case["config"]["source_urls"][0]).group(1))
+          PY
+          )
+          python tools/make_fixtures.py --pin "$pin"
+          git diff --exit-code -- fixtures/cases/
+
+  source-hash:
+    name: reproducibility manifest
+    needs: stage-guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: python tools/source_hash.py --check
+
+  # The corpus is only useful as evidence if the pinned URLs actually serve it. This catches a
+  # rewritten history or a deleted commit, which would silently invalidate every fixture.
+  evidence-urls:
+    name: pinned evidence reachable
+    needs: stage-guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Fetch every pinned source and compare to the local corpus
+        run: python tools/check_evidence_urls.py
+
+  # Active from Stage 2. stage-guard guarantees a skip here can only mean "no contract exists".
+  lint-contract:
+    name: genvm-lint
+    needs: stage-guard
+    if: needs.stage-guard.outputs.has_contract == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install -r requirements-dev.txt
+      - name: genvm-lint check
+        run: genvm-lint check contracts/source_consensus.py
+      - name: genvm-lint validate
+        run: genvm-lint validate contracts/source_consensus.py
+
+  # Direct mode: in-process, no simulator, no network, no LLM calls, no GEN.
+  direct-tests:
+    name: direct-mode tests
+    needs: stage-guard
+    if: needs.stage-guard.outputs.has_tests == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install -r requirements-dev.txt
+      - run: pytest tests/ -v --tb=short
+
+  # Proves the suite would notice if the load-bearing behaviours broke. A green suite proves the
+  # tests pass, not that they would catch the contract being wrong.
+  mutation-tests:
+    name: mutation tests
+    needs: stage-guard
+    if: needs.stage-guard.outputs.has_tests == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install -r requirements-dev.txt
+      - run: python tools/mutation_test.py
+      - name: Assert the contract was restored
+        run: git diff --exit-code -- contracts/
+
+  # The status-derivation rules are pure and must produce identical bytes on both platforms, so
+  # an integrator's off-chain configuration_hash matches what the chain reports.
+  windows-parity:
+    name: derivation + hash parity (Windows)
+    needs: stage-guard
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install jsonschema==4.23.0 "eth-hash[pycryptodome]==0.7.1"
+      - name: Fixture validation on Windows
+        run: python tools/validate_fixtures.py
+      - name: Reproducibility manifest on Windows
+        run: python tools/source_hash.py --check
+      - name: Line endings survived checkout
+        run: python tools/check_line_endings.py

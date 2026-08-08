@@ -1,0 +1,41 @@
+{
+  "id": "05-source-unavailable",
+  "category": "unavailable-source",
+  "description": "One configured source cannot be fetched; the two that can agree.",
+  "config": {
+    "query_id": "FERNPOST_0_9_0_RELEASE_DATE",
+    "question": "On what date was version 0.9.0 of Fernpost officially released?",
+    "fact_type": "DATE",
+    "normalization_rules": {},
+    "allowed_enum_values": [],
+    "source_urls": [
+      "https://raw.githubusercontent.com/GIFTEDLOV/source-consensus/7e58293b4b55fcf57dfc5e24d0d8a9f02e6c2d23/fixtures/corpus/05-source-unavailable/source-0-release-page.md",
+      "https://raw.githubusercontent.com/GIFTEDLOV/source-consensus/7e58293b4b55fcf57dfc5e24d0d8a9f02e6c2d23/fixtures/corpus/05-source-unavailable/source-1-changelog.md",
+      "https://raw.githubusercontent.com/GIFTEDLOV/source-consensus/7e58293b4b55fcf57dfc5e24d0d8a9f02e6c2d23/fixtures/corpus/05-source-unavailable/source-2-does-not-exist.md"
+    ],
+    "minimum_supporting_sources": 2,
+    "conflict_threshold": 2
+  },
+  "source_results": [
+    {
+      "source_index": 0,
+      "state": "VALUE",
+      "value": "2026-06-30"
+    },
+    {
+      "source_index": 1,
+      "state": "VALUE",
+      "value": "2026-06-30"
+    },
+    {
+      "source_index": 2,
+      "state": "UNAVAILABLE",
+      "value": null
+    }
+  ],
+  "expected": {
+    "status": "CONFIRMED",
+    "normalized_value": "2026-06-30"
+  },
+  "notes": "A dead source does not poison the result when enough others agree. The third URL is deliberately absent from the corpus, so it really does 404 rather than being simulated. Its index is recorded in unavailable_source_indices."
+}
