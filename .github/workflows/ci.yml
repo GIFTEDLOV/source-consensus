@@ -235,7 +235,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      - run: pip install jsonschema==4.23.0 "eth-hash[pycryptodome]==0.7.1"
+      # pytest is needed for the reference suite below; the GenVM runner is not, because the
+      # runner tarball is Linux-only and direct mode deliberately stays there. What runs here is
+      # exactly the byte-level layer whose cross-platform stability is being claimed.
+      - run: pip install jsonschema==4.23.0 "eth-hash[pycryptodome]==0.7.1" pytest==8.3.4
       - name: Fixture validation on Windows
         run: python tools/validate_fixtures.py
       - name: Reproducibility manifest on Windows
