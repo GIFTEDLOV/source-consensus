@@ -14,7 +14,8 @@
       "https://raw.githubusercontent.com/GIFTEDLOV/source-consensus/7e58293b4b55fcf57dfc5e24d0d8a9f02e6c2d23/fixtures/corpus/07-normalisation-equivalent/source-2-docs.md"
     ],
     "minimum_supporting_sources": 2,
-    "conflict_threshold": 2
+    "conflict_threshold": 2,
+    "require_pinned_evidence": true
   },
   "source_results": [
     {

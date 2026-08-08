@@ -1,6 +1,8 @@
 # SourceConsensus reproducibility manifest
 # sha256 over raw bytes. Regenerate with: python tools/source_hash.py --write
 # Verified in CI by: python tools/source_hash.py --check
+ea86bd8ade7829581f5f7b8a0692e6a635f0a895b6f700cfd56cb5600ea78103  contracts/__pycache__/source_consensus.cpython-314.pyc
+1167a1f67dc5e09f4db1da4ad5f9cc3d19598cb4a1b1bd23c60dd9b16d4427fd  contracts/source_consensus.py
 32c795eb56f720b214d67313d3dc1a10ace0d42686b08cc57c141e38bfd30ddf  fixtures/corpus/01-all-agree/source-0-release-page.md
 8bc4de1b9fa70b1940a9fdaceb68265677c96117d160690629086c76135bdd05  fixtures/corpus/01-all-agree/source-1-changelog.md
 9bdc58c09d909c0f9476a35bc4e864f37182df22a0a5041b6f5a43196b3253b1  fixtures/corpus/01-all-agree/source-2-docs-announcement.md

@@ -38,7 +38,8 @@
         "allowed_enum_values",
         "source_urls",
         "minimum_supporting_sources",
-        "conflict_threshold"
+        "conflict_threshold",
+        "require_pinned_evidence"
       ],
       "properties": {
         "query_id": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,63}$" },
@@ -68,7 +69,8 @@
           "items": { "type": "string", "format": "uri", "maxLength": 400 }
         },
         "minimum_supporting_sources": { "type": "integer", "minimum": 2, "maximum": 5 },
-        "conflict_threshold": { "type": "integer", "minimum": 1, "maximum": 5 }
+        "conflict_threshold": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "require_pinned_evidence": { "type": "boolean" }
       }
     },
     "source_results": {

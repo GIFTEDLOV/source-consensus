@@ -1,0 +1,4 @@
+# Direct mode only. Nothing in this repository touches a network: no deployment, no wallet, no GEN.
+paths:
+  contracts: contracts
+  artifacts: artifacts

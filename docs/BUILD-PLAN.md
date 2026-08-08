@@ -10,7 +10,7 @@ document can quietly reclassify it.
 
 ---
 
-## Stage 1 — Research and architecture *(this stage — complete, awaiting approval)*
+## Stage 1 — Research and architecture *(complete — approved)*
 
 **Delivered**
 
@@ -38,7 +38,17 @@ stage is approved.
 
 ---
 
-## Stage 2 — Contract implementation
+## Stage 2 — Contract implementation *(complete — in review)*
+
+**Delivered:** `contracts/source_consensus.py` (one deployable file, 9 public methods, 1 write), `tools/mutation_test.py`, and a Direct Mode suite. `genvm-lint check` and `validate` both clean against the pinned runner.
+
+Two corrections were forced by implementation and are recorded in place:
+
+- **`DERIVATION.md` §3, the tie uniqueness clause.** The first truth table let a `conflict_threshold` above the tied count fall through to row 4, where the lexicographic tie-break -- which exists only to pin determinism -- silently chose the winner of a dead heat. A test written from the table caught it before the contract shipped. The clause is now explicit and mutation-tested.
+- **Storage field names.** `status` and `value` are public view methods, so the storage fields behind them are `resolved_status` and `resolved_value`; the original names shadowed the methods and `genvm-lint` reported 8 public methods instead of 9.
+
+<details>
+<summary>Original Stage 2 plan</summary>
 
 **Deliverable:** `contracts/source_consensus.py`, a single deployable file.
 
@@ -66,6 +76,8 @@ states that explicitly.
 
 **Exit criteria:** `genvm-lint check` and `genvm-lint validate` both clean against the pinned runner;
 contract is LF-only; `stage-guard` now demands direct tests, which Stage 3 supplies.
+
+</details>
 
 ---
 
