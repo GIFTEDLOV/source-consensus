@@ -40,6 +40,10 @@ def collect() -> list[tuple[str, str]]:
         for path in sorted(base.rglob("*")):
             if not path.is_file():
                 continue
+            # Build artefacts are not source. They are gitignored, so hashing them makes the
+            # manifest pass locally and fail in CI, where they do not exist.
+            if "__pycache__" in path.parts or path.suffix in (".pyc", ".pyo"):
+                continue
             digest = hashlib.sha256(path.read_bytes()).hexdigest()
             rows.append((digest, str(path.relative_to(ROOT)).replace("\\", "/")))
     return sorted(rows, key=lambda r: r[1])

@@ -105,6 +105,24 @@ never "a contract exists but was not linted".
 
 ## Job 8 — `direct-tests` *(active from Stage 3)*
 
+**Why the runner is seeded explicitly.** `genlayer-test` 0.29.2 resolves its runner tarball from the
+**latest** release of `genlayerlabs/genvm` and expects an asset named `genvm-universal.tar.xz`.
+Newer releases no longer publish it — v0.3.0-rc7 ships platform-specific tarballs only, and the
+universal bundle moved to the separate `genvm-manager` repository, whose builds carry a *newer
+runner generation* than this contract pins. Left alone the download 404s inside
+`download_artifacts`, and **every** direct-mode test fails with `HTTPError: 404` — a failure that
+looks like a contract defect and is not.
+
+`tools/fetch_runner.py` pins the release and **refuses to install a tarball that does not contain
+the runner the contract header declares**, so the failure mode is a loud error rather than a silent
+test run against the wrong runtime. The ~217 MB download is cached by `actions/cache@v4`, keyed on
+the release and runner hash.
+
+One detail worth recording, because it cost a debugging cycle: the archive shards runners by the
+first two characters of the hash (`runners/py-genlayer/1j/b45aa8….tar`), so checking for the whole
+51-character hash as a substring never matches. The first version of the verifier did that and
+rejected a tarball that was perfectly correct.
+
 `genlayer-test==0.29.2` direct mode — in-process, no simulator, no Docker, no network, no LLM calls
 (web and prompt responses are mocked), no wallet, no GEN. Gated on `stage-guard`'s `has_tests`
 output rather than on `hashFiles`, so a skip can only ever mean "no tests exist", which

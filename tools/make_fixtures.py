@@ -61,6 +61,7 @@ def build(pin: str) -> list[dict]:
                 "source_urls": urls,
                 "minimum_supporting_sources": minimum,
                 "conflict_threshold": conflict,
+                "require_pinned_evidence": True,
             },
             "source_results": results,
             "expected": {"status": expected, "normalized_value": expected_value},

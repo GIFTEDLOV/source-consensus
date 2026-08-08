@@ -262,19 +262,26 @@ def derive_status(
 
     contenders = [v for v, idxs in ranked if len(idxs) >= conflict_threshold]
 
+    # A tie at the top is a dispute no threshold setting may resolve. The lexicographic tie-break
+    # exists to pin determinism, never to pick a winner -- without this clause, a conflict_threshold
+    # above the tied count would let row 4 confirm whichever value sorted first.
+    top_count = len(top_indices)
+    tied_at_top = sum(1 for _, idxs in ranked if len(idxs) == top_count)
+
     # 2. Genuine dispute.
-    if len(contenders) >= 2:
+    if len(contenders) >= 2 or tied_at_top >= 2:
         con = sorted(i for v, idxs in tally.items() for i in idxs)
         return result(STATUS_CONFLICTED, None, [], con)
 
     # 3. Confirmed.
-    if len(top_indices) >= minimum_supporting_sources:
+    if top_count >= minimum_supporting_sources:
         others = sorted(i for v, idxs in tally.items() if v != top_value for i in idxs)
         return result(STATUS_CONFIRMED, top_value, top_indices, others)
 
-    # 4. Reachable, but not enough agreement.
-    others = sorted(i for v, idxs in tally.items() if v != top_value for i in idxs)
-    return result(STATUS_INSUFFICIENT, None, [], others)
+    # 4. Reachable, but not enough agreement. Every VALUE index is recorded as conflicting so a
+    #    near-miss is visible: the query was almost answered, not untouched.
+    every = sorted(i for _, idxs in tally.items() for i in idxs)
+    return result(STATUS_INSUFFICIENT, None, [], every)
 
 
 # --------------------------------------------------------------------------------------------
@@ -302,6 +309,7 @@ def configuration_payload(config: Mapping[str, Any]) -> dict:
     index 0 means -- that is a different configuration, not a re-spelling of the same one.
     """
     rules = dict(config.get("normalization_rules") or {})
+    rules.setdefault("case_policy", CASE_PRESERVE)
     return {
         "v": SCHEMA_VERSION,
         "query_id": normalise_text(config["query_id"]),
@@ -314,6 +322,7 @@ def configuration_payload(config: Mapping[str, Any]) -> dict:
         "source_urls": [normalise_text(u) for u in config["source_urls"]],
         "minimum_supporting_sources": int(config["minimum_supporting_sources"]),
         "conflict_threshold": int(config["conflict_threshold"]),
+        "require_pinned_evidence": bool(config.get("require_pinned_evidence", False)),
     }
 
 
