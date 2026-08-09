@@ -7,7 +7,7 @@ parties, settles nothing, and has no admin functions. It resolves one bounded, t
 independently fetchable public sources and publishes a consensus-backed result other contracts can
 branch on.
 
-> **Status: Stage 1 — research and architecture. No contract exists yet.**
+> **Status: Stage 4 — integration documentation and tested examples.**
 > Nothing has touched a network: no deployment, no wallet signature, no GEN.
 > Nine fixture cases · commit-pinned evidence corpus · derivation rules executable today.
 >
@@ -185,9 +185,10 @@ full.
 - Narrative answers cannot be expressed; `intelligent-oracle` is better for those.
 - Live sources drift between fetches; `require_pinned_evidence` helps only where an immutable form
   exists.
-- **Convergence is unmeasured.** Whether real models agree on `supporting_source_indices` is the
+- **Real-model convergence is not-run.** The offline harness and adversarial checks pass; the
   largest open question — [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §11 states the risk and
-  Stage 3 must measure it before any convergence claim is made.
+Stage 3 measured it offline and documented the real-model run as not-run because no OpenRouter key
+was available.
 
 ## Stage 3 convergence
 
@@ -199,9 +200,8 @@ errors, transport failures, and truncation are not counted as model disagreement
 
 ## Status of this repository
 
-Stage 3 of five. The contract has direct-mode tests and mutation coverage. Offline convergence and
-adversarial validation pass; real-model convergence remains explicitly not-run until a runtime
-`OPENROUTER_API_KEY` is supplied. Stage 5 Bradbury deployment remains required.
+Stage 4 of five. The contract has direct-mode tests, mutation coverage, integration documentation,
+and two tested examples. Stage 5 Bradbury deployment remains required.
 
 Stage 5 — Bradbury deployment and one live resolution — is **required, not optional**: the
 submission needs a GenLayer Explorer contract URL.

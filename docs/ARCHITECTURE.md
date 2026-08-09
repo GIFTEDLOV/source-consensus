@@ -390,7 +390,8 @@ unchanged and consensus should succeed.
 **The consequence, stated honestly:** the non-supporting buckets in the stored record are the
 *leader's* partition, agreed by validators only to the extent that it produced the same status. They
 are informative, not consensus-backed, and §9's record must not be read as if all four sets carry
-equal weight. Documenting this is cheaper than pretending otherwise; **Stage 3 must measure it**, and
+equal weight. Documenting this is cheaper than pretending otherwise; **Stage 3's harness measures it
+when a provider key is available**, and
 if real models diverge on `supporting_source_indices` even when the status agrees, T1 needs revisiting
 before anything is claimed about convergence.
 

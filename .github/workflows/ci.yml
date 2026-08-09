@@ -260,3 +260,16 @@ jobs:
       - run: pip install pytest==8.3.4
       - run: python tools/convergence.py --report artifacts/convergence-summary.json
       - run: pytest tests/unit/test_convergence.py -v --tb=short
+
+  integration-examples:
+    name: integration examples
+    needs: stage-guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install pytest==8.3.4 "eth-hash[pycryptodome]==0.7.1"
+      - run: python -m py_compile examples/typed_release_date.py examples/enum_product_status.py
+      - run: pytest tests/unit/test_examples.py -v --tb=short
