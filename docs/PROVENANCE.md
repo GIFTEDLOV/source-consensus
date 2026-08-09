@@ -38,7 +38,7 @@ deployment was then submitted and never resubmitted:
   runner comment did not start with version, then failed during constructor validation
 - code check: bytecode is present at the returned address, but constructor execution failed, so it
   is not a usable initialized SourceConsensus contract
-- player3 balance: `2.988620238152751753 GEN` before; `2.982828252899170027 GEN` after
+- player3 balance: `2.988620238152751753 GEN` before; `2.984091408481575003 GEN` after
 - nonce: `6` before; `7` after
 
 No `resolve()` transaction was submitted. The failed constructor means no `get_config()`,
