@@ -200,8 +200,9 @@ errors, transport failures, and truncation are not counted as model disagreement
 
 ## Status of this repository
 
-Stage 4 of five. The contract has direct-mode tests, mutation coverage, integration documentation,
-and two tested examples. Stage 5 Bradbury deployment remains required.
+Stage 5 deployment was attempted once on Bradbury and failed with `FINISHED_WITH_ERROR` after the
+pubdata-limit workaround. No live resolution or release tag was created; see
+[`docs/PROVENANCE.md`](docs/PROVENANCE.md).
 
 Stage 5 — Bradbury deployment and one live resolution — is **required, not optional**: the
 submission needs a GenLayer Explorer contract URL.

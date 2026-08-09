@@ -157,7 +157,7 @@ result using the README alone.
 
 ---
 
-## Stage 5 — Bradbury deployment and one live resolution *(REQUIRED)*
+## Stage 5 — Bradbury deployment and one live resolution *(attempted — blocked by Bradbury execution failure)*
 
 - `docs/DEPLOYMENT.md` written **before** any transaction is signed: network, RPC, chain ID, source
   hash, constructor fields, expected `configuration_hash`, deployment command, verification
@@ -177,8 +177,11 @@ finding, and one of the more valuable things a deployment can produce.
 **Exit criteria:** a working GenLayer Explorer contract URL, and a live resolution whose result is
 recorded whatever it turned out to be.
 
-**Nothing in Stages 1–4 deploys, spends GEN, or requests a wallet signature.** Stage 5 is the first
-stage that touches a network and starts only on separate approval.
+Stage 5 was the first stage that touched a network. One deployment transaction was submitted after
+the canonical-source pubdata failure was handled with a reproducible AST-equivalent build. The
+transaction remains `ACCEPTED` with `FINISHED_WITH_ERROR`; no resolve transaction was submitted.
+The Stage 5 exit criteria are therefore not met, and the release is blocked rather than falsely marked
+complete.
 
 ---
 

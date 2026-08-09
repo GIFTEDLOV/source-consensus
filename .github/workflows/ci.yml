@@ -160,6 +160,11 @@ jobs:
         run: genvm-lint check contracts/source_consensus.py
       - name: genvm-lint validate
         run: genvm-lint validate contracts/source_consensus.py
+      - name: Build and lint deployable parity artifact
+        run: |
+          python tools/make_deployable.py contracts/source_consensus.py artifacts/source_consensus_deployable.py
+          genvm-lint check artifacts/source_consensus_deployable.py
+          genvm-lint validate artifacts/source_consensus_deployable.py
 
   # Direct mode: in-process, no simulator, no network, no LLM calls, no GEN.
   direct-tests:
@@ -273,3 +278,4 @@ jobs:
       - run: pip install pytest==8.3.4 "eth-hash[pycryptodome]==0.7.1"
       - run: python -m py_compile examples/typed_release_date.py examples/enum_product_status.py
       - run: pytest tests/unit/test_examples.py -v --tb=short
+      - run: python tools/make_deployable.py contracts/source_consensus.py artifacts/source_consensus_deployable.py

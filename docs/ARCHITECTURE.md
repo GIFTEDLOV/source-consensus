@@ -500,7 +500,7 @@ Stated here so a reviewer does not have to find them.
    contract adds nothing on top, by choice.
 8. **The non-supporting buckets are the leader's** (§11), and the record must be read accordingly.
 
-## 16. Example integrations *(illustrative — Stage 4 delivers two as working, tested code)*
+## 16. Example integrations *(illustrative; working tested consumers are in `examples/`)*
 
 **Parametric insurance trigger**
 
