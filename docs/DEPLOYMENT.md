@@ -47,7 +47,8 @@ was submitted with the header-preserving artifact:
 - execution hash: `0x6fb9a7c4e5802134be17c4c41070469225e56284c7e637ad4984b4d3df286038`
 - trace failure: `[EXPECTED] source_urls must be a list`
 
-The runner header was present and accepted. The deployment command used a JSON array without the
-CLI-required `array:` type prefix, so `source_urls` arrived at the constructor as a string. The
-address has bytecode but is not a usable initialized contract. This transaction is final and must
-not be resubmitted or followed by `resolve()`.
+The runner header was present and accepted. The installed CLI parses complex arguments using
+`JSON.parse`; the PowerShell command supplied backslash-escaped quotes inside a single-quoted token,
+so the JSON parse failed and `source_urls` arrived as a string. The CLI's `array:` text is a help
+label, not a literal prefix. The address has bytecode but is not a usable initialized contract. This
+transaction is final and must not be resubmitted or followed by `resolve()`.
