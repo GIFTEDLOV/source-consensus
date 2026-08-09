@@ -38,7 +38,7 @@ stage is approved.
 
 ---
 
-## Stage 2 — Contract implementation *(complete — in review)*
+## Stage 2 — Contract implementation *(complete)*
 
 **Delivered:** `contracts/source_consensus.py` (one deployable file, 9 public methods, 1 write), `tools/mutation_test.py`, and a Direct Mode suite. `genvm-lint check` and `validate` both clean against the pinned runner.
 
@@ -81,7 +81,7 @@ contract is LF-only; `stage-guard` now demands direct tests, which Stage 3 suppl
 
 ---
 
-## Stage 3 — Direct-mode tests, adversarial tests, and convergence
+## Stage 3 — Direct-mode tests, adversarial tests, and convergence *(complete — offline; real-model run not available)*
 
 **3a — Pure-function tests (no VM, no LLM)**
 
@@ -139,7 +139,7 @@ convergence run either executed and reported, or explicitly marked not-run with 
 
 ---
 
-## Stage 4 — Integration documentation and two working examples
+## Stage 4 — Integration documentation and two working examples *(complete)*
 
 - `docs/INTEGRATION.md` — intended integrators, dependency assumptions, constructor configuration,
   how to choose sources that converge, computing `configuration_hash` off-chain, pinning it in a
