@@ -1,7 +1,8 @@
 # Release Checklist
 
-Stage 4 is complete. Stage 5 was attempted with exactly one deployment transaction but remains
-blocked because Bradbury returned `FINISHED_WITH_ERROR` and did not finalize the contract.
+Stage 4 is complete. Stage 5 was attempted with two deployment transactions, both of which remain
+unusable because Bradbury returned `FINISHED_WITH_ERROR`; no resolve transaction or release tag
+exists.
 
 Before tagging `v1.0.0-bradbury`, update `PROVENANCE.md`, `DEPLOYMENT.md`, this file, and README with
 the deployment transaction, address, Explorer URL, resolve transaction, validator votes, execution

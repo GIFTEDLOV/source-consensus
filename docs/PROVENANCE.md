@@ -22,8 +22,25 @@ One deployment transaction was submitted, and never resubmitted:
 - canonical source SHA-256: `1167a1f67dc5e09f4db1da4ad5f9cc3d19598cb4a1b1bd23c60dd9b16d4427fd`
 - corrected deployable artifact SHA-256: `a43e7aae4e12121b62a89961c0791f4361f897b4be43b47fdb4f28e44a481c39`
 
-No `resolve()` transaction was submitted for the failed attempt. No final status/value, validator
-vote record, observed configuration hash, or Explorer contract URL exists for the returned address
-because that deployment did not finalize and is not a usable contract. A corrected deployment is
-permitted only after the packaging-fix CI run is green; its transaction and all subsequent reads
-will be appended below without overwriting this failure record.
+The packaging-fix branch was merged as `b0d888b2fb2e5f3dd6db4978eb5382de5f5235e8` after all CI
+checks passed, including deployable `genvm-lint`, 354 tests, and 12/12 mutations. One corrected
+deployment was then submitted and never resubmitted:
+
+- transaction: `0x8a287cf0b34becb4380b0f8af4cd97c4be39197de52c7a785b6f77944832e998`
+- returned address: `0x742E0C7C5d7A375b6d1bf1ED82114819ccD270AF`
+- consensus: `AGREE`
+- execution: `FINISHED_WITH_ERROR`
+- execution hash: `0x6fb9a7c4e5802134be17c4c41070469225e56284c7e637ad4984b4d3df286038`
+- failure: `[EXPECTED] source_urls must be a list`
+- root cause: the GenLayer CLI requires the `array:` argument type prefix; the deployment command
+  supplied the JSON array without that prefix, so the constructor received a string
+- runner result: the exact line-1 header was accepted; the trace logged only a warning that the
+  runner comment did not start with version, then failed during constructor validation
+- code check: bytecode is present at the returned address, but constructor execution failed, so it
+  is not a usable initialized SourceConsensus contract
+- player3 balance: `2.988620238152751753 GEN` before; `2.982828252899170027 GEN` after
+- nonce: `6` before; `7` after
+
+No `resolve()` transaction was submitted. The failed constructor means no `get_config()`,
+`configuration_hash()`, or initial-state claim is valid for this address. Stage 5 remains blocked;
+the CLI array encoding must be corrected and reviewed before any future deployment decision.

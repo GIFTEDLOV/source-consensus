@@ -7,8 +7,9 @@ parties, settles nothing, and has no admin functions. It resolves one bounded, t
 independently fetchable public sources and publishes a consensus-backed result other contracts can
 branch on.
 
-> **Status: Stage 4 — integration documentation and tested examples.**
-> Nothing has touched a network: no deployment, no wallet signature, no GEN.
+> **Status: Stage 5 attempted — Bradbury deployment remains blocked.**
+> Two deployment transactions were submitted and both failed during execution; no live resolution
+> or release tag exists.
 > Nine fixture cases · commit-pinned evidence corpus · derivation rules executable today.
 >
 > **Recommendation: MODIFY**, scoring **63/80 as briefed** against a 65 threshold.
@@ -200,8 +201,9 @@ errors, transport failures, and truncation are not counted as model disagreement
 
 ## Status of this repository
 
-Stage 5 deployment was attempted once on Bradbury and failed with `FINISHED_WITH_ERROR` after the
-pubdata-limit workaround. No live resolution or release tag was created; see
+Stage 5 deployment was attempted twice on Bradbury and both transactions ended with
+`FINISHED_WITH_ERROR`: first `absent_runner_comment`, then a constructor argument encoding error.
+No live resolution or release tag was created; see
 [`docs/PROVENANCE.md`](docs/PROVENANCE.md).
 
 Stage 5 — Bradbury deployment and one live resolution — is **required, not optional**: the

@@ -177,11 +177,12 @@ finding, and one of the more valuable things a deployment can produce.
 **Exit criteria:** a working GenLayer Explorer contract URL, and a live resolution whose result is
 recorded whatever it turned out to be.
 
-Stage 5 was the first stage that touched a network. One deployment transaction was submitted after
-the canonical-source pubdata failure was handled with a reproducible AST-equivalent build. The
-transaction remains `ACCEPTED` with `FINISHED_WITH_ERROR`; no resolve transaction was submitted.
-The Stage 5 exit criteria are therefore not met, and the release is blocked rather than falsely marked
-complete.
+Stage 5 was the first stage that touched a network. The first deployment transaction omitted the
+runner header and failed with `absent_runner_comment`. After the reproducible AST-equivalent header
+fix passed CI, exactly one corrected deployment was submitted; consensus was `AGREE`, but constructor
+argument encoding failed with `[EXPECTED] source_urls must be a list`. No resolve transaction was
+submitted. The Stage 5 exit criteria are therefore not met, and the release is blocked rather than
+falsely marked complete.
 
 ---
 

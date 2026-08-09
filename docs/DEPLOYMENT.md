@@ -1,7 +1,7 @@
 # Deployment
 
-This document contains the pre-transaction procedure and the recorded Stage 5 attempts. The first
-attempt did not finalize, so no resolve transaction was submitted for it.
+This document contains the pre-transaction procedure and the recorded Stage 5 attempts. Neither
+attempt produced a usable initialized contract, so no resolve transaction was submitted.
 
 Target network: GenLayer Bradbury, chain ID `4221`. Before signing, verify the Bradbury RPC,
 account provenance and balance, the final audited source hash, `genvm-lint check` and `validate`,
@@ -34,3 +34,20 @@ not be treated as a usable contract. The corrected attempt must use the generate
 `artifacts/source_consensus_deployable.py`, whose current SHA-256 is
 `a43e7aae4e12121b62a89961c0791f4361f897b4be43b47fdb4f28e44a481c39` and whose first line is the
 official pinned runner header.
+
+## Corrected Attempt Record
+
+The packaging correction was merged as `b0d888b` after green CI. Exactly one corrected deployment
+was submitted with the header-preserving artifact:
+
+- transaction: `0x8a287cf0b34becb4380b0f8af4cd97c4be39197de52c7a785b6f77944832e998`
+- address: `0x742E0C7C5d7A375b6d1bf1ED82114819ccD270AF`
+- consensus: `AGREE`
+- execution: `FINISHED_WITH_ERROR`
+- execution hash: `0x6fb9a7c4e5802134be17c4c41070469225e56284c7e637ad4984b4d3df286038`
+- trace failure: `[EXPECTED] source_urls must be a list`
+
+The runner header was present and accepted. The deployment command used a JSON array without the
+CLI-required `array:` type prefix, so `source_urls` arrived at the constructor as a string. The
+address has bytecode but is not a usable initialized contract. This transaction is final and must
+not be resubmitted or followed by `resolve()`.
