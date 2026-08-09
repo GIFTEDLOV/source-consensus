@@ -1,7 +1,8 @@
 # Deployment
 
-This document contains the pre-transaction procedure and the recorded Stage 5 attempts. None of
-the three attempts produced a usable initialized contract, so no resolve transaction was submitted.
+This document contains the pre-transaction procedure and the recorded Stage 5 attempts. The first
+three attempts failed and remain preserved; the native deploy-script attempt 4 produced a usable
+initialized contract and the single planned resolve transaction.
 
 Target network: GenLayer Bradbury, chain ID `4221`. Before signing, verify the Bradbury RPC,
 account provenance and balance, the final audited source hash, `genvm-lint check` and `validate`,
@@ -14,7 +15,7 @@ artifact hash, correct `get_config()` and `get_sources()`, matching `configurati
 `is_resolved() == false`. Re-fetch evidence, then perform exactly one `resolve()`. Verify its
 finalized result, canonical record, all source buckets, unchanged configuration hash, validator
 votes, and GEN cost. The Explorer URL will be recorded as
-`https://explorer.genlayer.com/contract/<address>` after deployment.
+`https://explorer-bradbury.genlayer.com/contract/<address>` after deployment.
 
 ## Attempt Record
 
@@ -74,6 +75,47 @@ the Bradbury warning means the pinned-runtime guarantee is not proven harmless. 
 the returned address, but the constructor failed, so the address is not usable and must not receive
 `resolve()`.
 
+## Attempt 4 live evidence
+
+The official deploy-script framework was launched with no constructor CLI arguments. The script
+submitted exactly one new deployment transaction after the gate above:
+
+- pre-balance: `2.979383521792548153 GEN`; pre-nonce: `8`
+- deployment transaction: `0xcbd90283f8f7a62d3b039d878473845a0136187307afc12e4d29b8d25879ed31`
+- returned contract: `0x8cf322A235AB2C3F15732DF39e5F6177af3E0626`
+- execution hash: `0x3c29e3a1a72c9218fbb9a6fb6e273fc747f23d2c3450c72a67af569619569926`
+- protocol status: `ACCEPTED`; consensus: `AGREE`; execution: `FINISHED_WITH_RETURN`
+- initial rotations: `3`; round 0 votes: `5/5 AGREE`; created `2026-08-09T13:43:58Z`, last vote
+  `2026-08-09T13:44:11Z`
+- accepted-state source: `gen_getContractCode` returned 47,090 bytes matching deployable SHA-256
+  `a43e7aae4e12121b62a89961c0791f4361f897b4be43b47fdb4f28e44a481c39` exactly
+- Explorer: `https://explorer-bradbury.genlayer.com/contract/0x8cf322A235AB2C3F15732DF39e5F6177af3E0626`
+
+`get_config()` matched every observable constructor field, including `deployer`, `source_count: 3`,
+thresholds, `PRESERVE`, pinned evidence, and expected
+`configuration_hash` `0x14000a8af1488048755b93a32a7fa31ded90897e62d28aad875dc9a087d427cc`. `get_sources()`
+reported all three pinned URLs with `VALUE` and `2026-03-11`; `is_resolved()` was initially false.
+
+The script then submitted exactly one `resolve()` transaction after independently re-fetching and
+hashing all three pinned sources:
+
+- resolve transaction: `0x278a67c29f2c109f41cee1bee3604d2adee8c047e13d4dc46e2c65e213460733`
+- execution hash: `0x01dd37e78c28557c57a28e6d7907bc244378c94005f05d1a4c113baee85c9ff2`
+- protocol status: `ACCEPTED`; consensus: `AGREE`; execution: `FINISHED_WITH_RETURN`
+- initial rotations: `3`; round 0 votes: `4 AGREE`, `1 TIMEOUT`; `5/5` committed and revealed
+- final status/value: `CONFIRMED` / `2026-03-11`
+- buckets: supporting `[0, 1, 2]`; conflicting `[]`; unavailable `[]`; ambiguous `[]`; no-value `[]`
+- canonical record independently re-derived from `get_record()` and configuration hash
+
+The account ended at nonce `10` and balance `2.974018148455848753 GEN`; total cost across deployment
+and resolve was `0.005365373336699400 GEN`.
+
+Bradbury's transaction object remains protocol status `ACCEPTED` (status code `5`). A read-only wait
+for literal `FINALIZED` timed out for both transactions, and `gen_getContractCode` returned the
+source at `accepted` but not at `finalized`. No extra finalization transaction was submitted. Stage 5
+is operationally resolved, but the strict `FINALIZED` release gate remains an external Bradbury
+status blocker.
+
 ## Attempt 4 transport gate (pre-transaction)
 
 Attempt 4 is not a transaction record. The dedicated `deploy/04_stage5_attempt4.js` module uses the
@@ -89,5 +131,5 @@ line-1 `Depends` header, and AST parity with the canonical source. The runner wa
 the GenVM text-runner parser's optional `v<...>` engine-version line: without that separate line it
 selects its default engine version while the JSON `Depends` entry still identifies the content-hashed
 `py-genlayer` dependency. The current runner documentation specifies the one-line hashed `Depends`
-form used here, so the header was not changed. A successful Bradbury constructor is still required
-before Stage 5 can be marked complete.
+form used here, so the header was not changed. A successful Bradbury constructor is now recorded
+above. Literal `FINALIZED` remains the only unmet release gate.

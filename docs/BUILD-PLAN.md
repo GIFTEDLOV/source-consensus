@@ -157,7 +157,7 @@ result using the README alone.
 
 ---
 
-## Stage 5 — Bradbury deployment and one live resolution *(attempted — blocked by Bradbury execution failure)*
+## Stage 5 — Bradbury deployment and one live resolution *(live flow complete; strict finality pending)*
 
 - `docs/DEPLOYMENT.md` written **before** any transaction is signed: network, RPC, chain ID, source
   hash, constructor fields, expected `configuration_hash`, deployment command, verification
@@ -177,12 +177,17 @@ finding, and one of the more valuable things a deployment can produce.
 **Exit criteria:** a working GenLayer Explorer contract URL, and a live resolution whose result is
 recorded whatever it turned out to be.
 
-Stage 5 was the first stage that touched a network. The first deployment transaction omitted the
-runner header and failed with `absent_runner_comment`. After the reproducible AST-equivalent header
-fix passed CI, two corrected deployments were submitted; both reached consensus `AGREE`, but
-constructor argument encoding failed with `[EXPECTED] source_urls must be a list`. No resolve
-transaction was submitted. The Stage 5 exit criteria are therefore not met, and the release is
-blocked rather than falsely marked complete.
+Stage 5 was the first stage that touched a network. Three failed deployment transactions are
+preserved in the provenance record: the first omitted the runner header, and the next two used
+scalar CLI transport for `source_urls`. The official native deploy-script attempt 4 then completed
+with consensus `AGREE` and execution `FINISHED_WITH_RETURN`; `get_config()`, source bytes, the
+configuration hash, and the initial unresolved state all matched. Exactly one live `resolve()` was
+submitted and completed with `AGREE` / `FINISHED_WITH_RETURN`, returning `CONFIRMED` and
+`2026-03-11`; its record and source buckets re-derived independently.
+
+Bradbury currently reports both transactions as `ACCEPTED` and a read-only wait for literal
+`FINALIZED` timed out. No additional transaction was submitted. The operational flow is complete,
+but the strict Stage 5 release gate remains blocked on externally observable finality.
 
 ---
 

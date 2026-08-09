@@ -66,21 +66,51 @@ transport; this is preserved as an execution-process failure:
 - player3 balance: `2.988620238152751753 GEN` before; `2.979383521792548153 GEN` after
 - nonce: `7` before; `8` after
 
-No `resolve()` transaction was submitted. Another deployment requires a JavaScript deploy script or
-direct GenLayer client call that passes a native array. The Bradbury runner warning is also not proven
-harmless: the local pinned runner and official header format are valid, but Bradbury logged
-`using default`, so the pinned-runtime guarantee requires resolution before another write.
+No `resolve()` transaction was submitted for this failed attempt. Another deployment required a
+JavaScript deploy script or direct GenLayer client call that passes a native array. The runner
+warning was still under investigation at this point in the historical record; the later source-level
+analysis and successful constructor evidence are recorded below.
 
-Attempt 4 preparation is preserved separately from the three submitted transactions. The official
+Attempt 4 preparation was preserved separately from the three submitted transactions. The official
 GenLayer deploy-script path is implemented in `deploy/04_stage5_attempt4.js`; it reads only
 `artifacts/source_consensus_deployable.py` and passes the nine in-code constructor values directly to
 `client.deployContract({ code, args: constructorArgs })`. A mock-client test records the exact
 received arguments and proves that `source_urls` remains the same native `Array<string>` object at
-index 3. No attempt-4 transaction hash exists yet.
+index 3. The resulting attempt-4 transaction is recorded below.
 
 The literal warning string is absent from the installed `genlayer` CLI, `genlayer-js`, and locally
 extracted Python runner sources; it appears in Bradbury's GenVM trace. The installed/current runner
 documentation separates the optional GenVM engine version line from the JSON `Depends` dependency:
 the exact hashed `py-genlayer` header remains the runtime dependency selector, while the warning
 describes the default engine-version field. This is documented evidence, not a header change; a
-successful constructor is still required to close the remaining runtime uncertainty.
+the successful constructor and exact accepted-state source bytes provide operational evidence that
+the header was accepted; the separate protocol finality gate is recorded below.
+
+Attempt 4 succeeded through deployment, initialization, and one live resolution using the official
+native deploy-script transport:
+
+- pre-balance / nonce: `2.979383521792548153 GEN` / `8`
+- deployment tx: `0xcbd90283f8f7a62d3b039d878473845a0136187307afc12e4d29b8d25879ed31`
+- contract: `0x8cf322A235AB2C3F15732DF39e5F6177af3E0626`
+- deployment execution hash: `0x3c29e3a1a72c9218fbb9a6fb6e273fc747f23d2c3450c72a67af569619569926`
+- deployment: `ACCEPTED`, `AGREE`, `FINISHED_WITH_RETURN`, 5/5 validator votes `AGREE`, 3 initial rotations
+- accepted-state source: 47,090 bytes, exact deployable SHA-256
+  `a43e7aae4e12121b62a89961c0791f4361f897b4be43b47fdb4f28e44a481c39`
+- resolve tx: `0x278a67c29f2c109f41cee1bee3604d2adee8c047e13d4dc46e2c65e213460733`
+- resolve execution hash: `0x01dd37e78c28557c57a28e6d7907bc244378c94005f05d1a4c113baee85c9ff2`
+- resolve: `ACCEPTED`, `AGREE`, `FINISHED_WITH_RETURN`, 4 `AGREE` and 1 `TIMEOUT` vote, 3 initial rotations
+- final state: `CONFIRMED`, `2026-03-11`; supporting `[0,1,2]`, all other buckets empty
+- expected and observed configuration hash:
+  `0x14000a8af1488048755b93a32a7fa31ded90897e62d28aad875dc9a087d427cc`
+- final balance / nonce: `2.974018148455848753 GEN` / `10`; total GEN cost:
+  `0.005365373336699400 GEN`
+- Explorer: `https://explorer-bradbury.genlayer.com/contract/0x8cf322A235AB2C3F15732DF39e5F6177af3E0626`
+
+Independent read-back confirmed every `get_config()` field, all three `get_sources()` entries,
+`get_result()`, `get_record()`, `status()`, `value()`, `is_resolved()`, and unchanged
+`configuration_hash()`. The canonical record re-derives to the observed result.
+
+Bradbury does not expose literal `FINALIZED` for these successful transactions: a read-only
+`waitForTransactionReceipt(status: FINALIZED)` timed out at status code `5` (`ACCEPTED`), while the
+documented `gen_getContractCode` call returned exact source bytes at `accepted` and not at `finalized`.
+No extra finalization transaction was sent. This is the only remaining release-gate discrepancy.

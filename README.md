@@ -7,9 +7,10 @@ parties, settles nothing, and has no admin functions. It resolves one bounded, t
 independently fetchable public sources and publishes a consensus-backed result other contracts can
 branch on.
 
-> **Status: Stage 5 attempted — Bradbury deployment remains blocked.**
-> Three deployment transactions were submitted and all failed during execution; no live resolution
-> or release tag exists.
+> **Status: Stage 5 live flow completed; strict Bradbury finality gate remains open.**
+> Attempt 4 deployed and initialized the contract, and exactly one live resolution returned
+> `CONFIRMED` with value `2026-03-11`. Bradbury has not exposed literal `FINALIZED` for either
+> transaction, so no release tag has been created.
 > Nine fixture cases · commit-pinned evidence corpus · derivation rules executable today.
 >
 > **Recommendation: MODIFY**, scoring **63/80 as briefed** against a 65 threshold.
@@ -201,11 +202,12 @@ errors, transport failures, and truncation are not counted as model disagreement
 
 ## Status of this repository
 
-Stage 5 deployment was attempted three times on Bradbury and all transactions ended with
-`FINISHED_WITH_ERROR`: first `absent_runner_comment`, then two PowerShell/CLI constructor argument
-encoding errors.
-No live resolution or release tag was created; see
-[`docs/PROVENANCE.md`](docs/PROVENANCE.md).
+Three failed Bradbury deployments are preserved in [`docs/PROVENANCE.md`](docs/PROVENANCE.md).
+The official native deploy-script transport then completed one deployment and exactly one live
+resolution: constructor execution returned `FINISHED_WITH_RETURN`, and the final result is
+`CONFIRMED` with value `2026-03-11`. The transactions remain protocol status `ACCEPTED`; a
+read-only `FINALIZED` wait timed out, so the release tag is intentionally pending that external
+finality gate.
 
 Stage 5 — Bradbury deployment and one live resolution — is **required, not optional**: the
 submission needs a GenLayer Explorer contract URL.
