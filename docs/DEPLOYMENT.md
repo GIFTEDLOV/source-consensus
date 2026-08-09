@@ -53,10 +53,11 @@ so the JSON parse failed and `source_urls` arrived as a string. The CLI's `array
 label, not a literal prefix. The address has bytecode but is not a usable initialized contract. This
 transaction is final and must not be resubmitted or followed by `resolve()`.
 
-## Third Attempt Record
+## Latest Attempt Record
 
-After PR #5 merged with green CI and the fail-closed preflight passed, one deployment was submitted
-using a PowerShell variable containing a valid JSON array. The transaction was:
+After PR #5 merged with green CI and the fail-closed preflight passed, one deployment was submitted.
+It was mistakenly invoked through the PowerShell CLI path rather than the requested native JS
+transport. The transaction was:
 
 - transaction: `0x0fdc2ca07dc43700378f8b72679ef1ae5a35c2135c96dc70b43b593821283e41`
 - address: `0x908dC0774677a6cB5Ab4c0d51FE2096c08a3B6d8`
@@ -68,5 +69,7 @@ using a PowerShell variable containing a valid JSON array. The transaction was:
 Windows PowerShell stripped the embedded quotes while marshalling the variable to the native Node
 CLI. The CLI consequently received a string despite the local Python preflight and correct source
 artifact. The trace also logged `runner comment does not start with version, using default`; no
-`absent_runner_comment` occurred. Bytecode exists at the returned address, but the constructor
-failed, so the address is not usable and must not receive `resolve()`.
+`absent_runner_comment` occurred. The local pinned runner and official header format are valid, but
+the Bradbury warning means the pinned-runtime guarantee is not proven harmless. Bytecode exists at
+the returned address, but the constructor failed, so the address is not usable and must not receive
+`resolve()`.

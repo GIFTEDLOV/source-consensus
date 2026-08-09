@@ -47,7 +47,9 @@ No `resolve()` transaction was submitted. The failed constructor means no `get_c
 `configuration_hash()`, or initial-state claim is valid for this address. Stage 5 remains blocked;
 the CLI array encoding must be corrected and reviewed before any future deployment decision.
 
-The second corrected deployment was submitted only after fail-closed preflight and PR #5 CI passed:
+The latest corrected deployment was submitted only after fail-closed preflight and PR #5 CI passed.
+It was mistakenly invoked through the PowerShell CLI path rather than the requested native JS
+transport; this is preserved as an execution-process failure:
 
 - transaction: `0x0fdc2ca07dc43700378f8b72679ef1ae5a35c2135c96dc70b43b593821283e41`
 - returned address: `0x908dC0774677a6cB5Ab4c0d51FE2096c08a3B6d8`
@@ -64,6 +66,7 @@ The second corrected deployment was submitted only after fail-closed preflight a
 - player3 balance: `2.988620238152751753 GEN` before; `2.979383521792548153 GEN` after
 - nonce: `7` before; `8` after
 
-No `resolve()` transaction was submitted. A fourth deployment requires a different transport, such
-as a JavaScript deploy script or direct GenLayer client call that passes a native array, and is not
-justified without explicit review of that new transaction path.
+No `resolve()` transaction was submitted. Another deployment requires a JavaScript deploy script or
+direct GenLayer client call that passes a native array. The Bradbury runner warning is also not proven
+harmless: the local pinned runner and official header format are valid, but Bradbury logged
+`using default`, so the pinned-runtime guarantee requires resolution before another write.
