@@ -9,7 +9,11 @@ from __future__ import annotations
 import ast
 import io
 import pathlib
+import re
 import tokenize
+
+
+RUNNER_HEADER = re.compile(r'^# \{ "Depends": "py-genlayer:[0-9a-z]+" \}$')
 
 
 def docstring_spans(tree: ast.AST) -> set[tuple[int, int, int, int]]:
@@ -36,10 +40,16 @@ class StripDocstrings(ast.NodeTransformer):
 
 
 def build(source: pathlib.Path, target: pathlib.Path) -> None:
-    text = source.read_text(encoding="utf-8")
+    raw = source.read_bytes()
+    if raw.startswith(b"\xef\xbb\xbf"):
+        raise SystemExit("BOM is forbidden before the GenVM runner header")
+    text = raw.decode("utf-8")
+    first_line = text.splitlines()[0] if text.splitlines() else ""
+    if not RUNNER_HEADER.fullmatch(first_line):
+        raise SystemExit("canonical source must begin with the exact GenVM runner header")
     tree = ast.parse(text)
     spans = docstring_spans(tree)
-    runner_header = next((line for line in text.splitlines() if line.startswith("# { \"Depends\": ")), None)
+    runner_header = first_line
     tokens = []
     for token in tokenize.generate_tokens(io.StringIO(text).readline):
         inside_doc = any((sl, sc) <= token.start and token.end <= (el, ec) for sl, sc, el, ec in spans)
