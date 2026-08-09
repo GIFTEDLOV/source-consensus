@@ -32,8 +32,10 @@ deployment was then submitted and never resubmitted:
 - execution: `FINISHED_WITH_ERROR`
 - execution hash: `0x6fb9a7c4e5802134be17c4c41070469225e56284c7e637ad4984b4d3df286038`
 - failure: `[EXPECTED] source_urls must be a list`
-- root cause: the GenLayer CLI requires the `array:` argument type prefix; the deployment command
-  supplied the JSON array without that prefix, so the constructor received a string
+- root cause: the installed GenLayer CLI parses complex arguments with `JSON.parse`; the PowerShell
+  command supplied backslash-escaped quotes inside a single-quoted token, so JSON parsing failed and
+  the constructor received the whole `source_urls` token as a string. The CLI's `array:` text is a
+  help label, not a literal prefix.
 - runner result: the exact line-1 header was accepted; the trace logged only a warning that the
   runner comment did not start with version, then failed during constructor validation
 - code check: bytecode is present at the returned address, but constructor execution failed, so it
