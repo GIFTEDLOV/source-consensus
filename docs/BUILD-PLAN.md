@@ -179,10 +179,10 @@ recorded whatever it turned out to be.
 
 Stage 5 was the first stage that touched a network. The first deployment transaction omitted the
 runner header and failed with `absent_runner_comment`. After the reproducible AST-equivalent header
-fix passed CI, exactly one corrected deployment was submitted; consensus was `AGREE`, but constructor
-argument encoding failed with `[EXPECTED] source_urls must be a list`. No resolve transaction was
-submitted. The Stage 5 exit criteria are therefore not met, and the release is blocked rather than
-falsely marked complete.
+fix passed CI, two corrected deployments were submitted; both reached consensus `AGREE`, but
+constructor argument encoding failed with `[EXPECTED] source_urls must be a list`. No resolve
+transaction was submitted. The Stage 5 exit criteria are therefore not met, and the release is
+blocked rather than falsely marked complete.
 
 ---
 

@@ -1,6 +1,6 @@
 # Release Checklist
 
-Stage 4 is complete. Stage 5 was attempted with two deployment transactions, both of which remain
+Stage 4 is complete. Stage 5 was attempted with three deployment transactions, all of which remain
 unusable because Bradbury returned `FINISHED_WITH_ERROR`; no resolve transaction or release tag
 exists.
 

@@ -23,8 +23,8 @@ One deployment transaction was submitted, and never resubmitted:
 - corrected deployable artifact SHA-256: `a43e7aae4e12121b62a89961c0791f4361f897b4be43b47fdb4f28e44a481c39`
 
 The packaging-fix branch was merged as `b0d888b2fb2e5f3dd6db4978eb5382de5f5235e8` after all CI
-checks passed, including deployable `genvm-lint`, 354 tests, and 12/12 mutations. One corrected
-deployment was then submitted and never resubmitted:
+checks passed, including deployable `genvm-lint`, 354 tests, and 12/12 mutations. Two corrected
+deployments were then submitted, each exactly once and never resubmitted:
 
 - transaction: `0x8a287cf0b34becb4380b0f8af4cd97c4be39197de52c7a785b6f77944832e998`
 - returned address: `0x742E0C7C5d7A375b6d1bf1ED82114819ccD270AF`
@@ -46,3 +46,24 @@ deployment was then submitted and never resubmitted:
 No `resolve()` transaction was submitted. The failed constructor means no `get_config()`,
 `configuration_hash()`, or initial-state claim is valid for this address. Stage 5 remains blocked;
 the CLI array encoding must be corrected and reviewed before any future deployment decision.
+
+The second corrected deployment was submitted only after fail-closed preflight and PR #5 CI passed:
+
+- transaction: `0x0fdc2ca07dc43700378f8b72679ef1ae5a35c2135c96dc70b43b593821283e41`
+- returned address: `0x908dC0774677a6cB5Ab4c0d51FE2096c08a3B6d8`
+- consensus: `AGREE`
+- execution: `FINISHED_WITH_ERROR`
+- execution hash: `0x41752ebd9af24a8dac68fa90d59b0c9f4f7aff7d5fcdb3620063d3d2ef850957`
+- failure: `[EXPECTED] source_urls must be a list`
+- root cause: Windows PowerShell native argument marshalling removed embedded JSON quote characters
+  from the variable passed to the Node CLI, so the installed CLI again received a string
+- trace warning: `runner comment does not start with version, using default`; no
+  `absent_runner_comment` occurred
+- code check: bytecode is present, but constructor execution failed; this is not a usable initialized
+  SourceConsensus contract
+- player3 balance: `2.988620238152751753 GEN` before; `2.979383521792548153 GEN` after
+- nonce: `7` before; `8` after
+
+No `resolve()` transaction was submitted. A fourth deployment requires a different transport, such
+as a JavaScript deploy script or direct GenLayer client call that passes a native array, and is not
+justified without explicit review of that new transaction path.

@@ -8,7 +8,7 @@ independently fetchable public sources and publishes a consensus-backed result o
 branch on.
 
 > **Status: Stage 5 attempted — Bradbury deployment remains blocked.**
-> Two deployment transactions were submitted and both failed during execution; no live resolution
+> Three deployment transactions were submitted and all failed during execution; no live resolution
 > or release tag exists.
 > Nine fixture cases · commit-pinned evidence corpus · derivation rules executable today.
 >
@@ -201,8 +201,9 @@ errors, transport failures, and truncation are not counted as model disagreement
 
 ## Status of this repository
 
-Stage 5 deployment was attempted twice on Bradbury and both transactions ended with
-`FINISHED_WITH_ERROR`: first `absent_runner_comment`, then a constructor argument encoding error.
+Stage 5 deployment was attempted three times on Bradbury and all transactions ended with
+`FINISHED_WITH_ERROR`: first `absent_runner_comment`, then two PowerShell/CLI constructor argument
+encoding errors.
 No live resolution or release tag was created; see
 [`docs/PROVENANCE.md`](docs/PROVENANCE.md).
 
