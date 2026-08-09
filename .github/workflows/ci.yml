@@ -247,3 +247,16 @@ jobs:
         run: python tools/check_line_endings.py
       - name: Reference-implementation suite on Windows
         run: pytest tests/unit -v --tb=short
+
+  convergence-offline:
+    name: convergence harness (offline)
+    needs: stage-guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install pytest==8.3.4
+      - run: python tools/convergence.py --report artifacts/convergence-summary.json
+      - run: pytest tests/unit/test_convergence.py -v --tb=short

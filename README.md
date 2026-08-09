@@ -189,11 +189,19 @@ full.
   largest open question — [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §11 states the risk and
   Stage 3 must measure it before any convergence claim is made.
 
+## Stage 3 convergence
+
+Run the offline harness with `python tools/convergence.py`. It validates all nine fixtures and
+adversarial response categories without a key. An opt-in OpenRouter run uses five models, logs raw
+JSONL responses, and reports metrics with explicit `n/N` denominators. HTTP 402/429, provider
+errors, transport failures, and truncation are not counted as model disagreement. See
+[`docs/CONVERGENCE-REPORT.md`](docs/CONVERGENCE-REPORT.md).
+
 ## Status of this repository
 
-Stage 1 of five. The contract does not exist yet, and CI says so rather than implying coverage: the
-`stage-guard` job passes while there is no contract and **fails the moment one appears without
-direct-mode tests beside it**. There are no placeholder tests.
+Stage 3 of five. The contract has direct-mode tests and mutation coverage. Offline convergence and
+adversarial validation pass; real-model convergence remains explicitly not-run until a runtime
+`OPENROUTER_API_KEY` is supplied. Stage 5 Bradbury deployment remains required.
 
 Stage 5 — Bradbury deployment and one live resolution — is **required, not optional**: the
 submission needs a GenLayer Explorer contract URL.
