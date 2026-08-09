@@ -73,3 +73,21 @@ artifact. The trace also logged `runner comment does not start with version, usi
 the Bradbury warning means the pinned-runtime guarantee is not proven harmless. Bytecode exists at
 the returned address, but the constructor failed, so the address is not usable and must not receive
 `resolve()`.
+
+## Attempt 4 transport gate (pre-transaction)
+
+Attempt 4 is not a transaction record. The dedicated `deploy/04_stage5_attempt4.js` module uses the
+official deploy-script callback and calls `client.deployContract({ code, args: constructorArgs })`.
+All nine constructor values are built in the module; `constructorArgs[3] === sourceUrls` and
+`Array.isArray(constructorArgs[3])` are asserted before the client call. The mock-client regression
+test proves the received nested value is an array of three strings, with no `JSON.stringify`, shell
+argument, or `process.argv` path.
+
+The deployable artifact gate passes at 47,090 bytes with SHA-256
+`a43e7aae4e12121b62a89961c0791f4361f897b4be43b47fdb4f28e44a481c39`, byte 0 `#`, no BOM, exact
+line-1 `Depends` header, and AST parity with the canonical source. The runner warning was traced to
+the GenVM text-runner parser's optional `v<...>` engine-version line: without that separate line it
+selects its default engine version while the JSON `Depends` entry still identifies the content-hashed
+`py-genlayer` dependency. The current runner documentation specifies the one-line hashed `Depends`
+form used here, so the header was not changed. A successful Bradbury constructor is still required
+before Stage 5 can be marked complete.

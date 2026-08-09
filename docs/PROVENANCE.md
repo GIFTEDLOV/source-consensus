@@ -70,3 +70,17 @@ No `resolve()` transaction was submitted. Another deployment requires a JavaScri
 direct GenLayer client call that passes a native array. The Bradbury runner warning is also not proven
 harmless: the local pinned runner and official header format are valid, but Bradbury logged
 `using default`, so the pinned-runtime guarantee requires resolution before another write.
+
+Attempt 4 preparation is preserved separately from the three submitted transactions. The official
+GenLayer deploy-script path is implemented in `deploy/04_stage5_attempt4.js`; it reads only
+`artifacts/source_consensus_deployable.py` and passes the nine in-code constructor values directly to
+`client.deployContract({ code, args: constructorArgs })`. A mock-client test records the exact
+received arguments and proves that `source_urls` remains the same native `Array<string>` object at
+index 3. No attempt-4 transaction hash exists yet.
+
+The literal warning string is absent from the installed `genlayer` CLI, `genlayer-js`, and locally
+extracted Python runner sources; it appears in Bradbury's GenVM trace. The installed/current runner
+documentation separates the optional GenVM engine version line from the JSON `Depends` dependency:
+the exact hashed `py-genlayer` header remains the runtime dependency selector, while the warning
+describes the default engine-version field. This is documented evidence, not a header change; a
+successful constructor is still required to close the remaining runtime uncertainty.
