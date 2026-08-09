@@ -7,10 +7,9 @@ parties, settles nothing, and has no admin functions. It resolves one bounded, t
 independently fetchable public sources and publishes a consensus-backed result other contracts can
 branch on.
 
-> **Status: Stage 5 live flow completed; strict Bradbury finality gate remains open.**
+> **Status: Stage 5 complete on Bradbury; release evidence finalized.**
 > Attempt 4 deployed and initialized the contract, and exactly one live resolution returned
-> `CONFIRMED` with value `2026-03-11`. Bradbury has not exposed literal `FINALIZED` for either
-> transaction, so no release tag has been created.
+> `CONFIRMED` with value `2026-03-11`. Both transactions reached protocol `FINALIZED`.
 > Nine fixture cases · commit-pinned evidence corpus · derivation rules executable today.
 >
 > **Recommendation: MODIFY**, scoring **63/80 as briefed** against a 65 threshold.
@@ -205,9 +204,9 @@ errors, transport failures, and truncation are not counted as model disagreement
 Three failed Bradbury deployments are preserved in [`docs/PROVENANCE.md`](docs/PROVENANCE.md).
 The official native deploy-script transport then completed one deployment and exactly one live
 resolution: constructor execution returned `FINISHED_WITH_RETURN`, and the final result is
-`CONFIRMED` with value `2026-03-11`. The transactions remain protocol status `ACCEPTED`; a
-read-only `FINALIZED` wait timed out, so the release tag is intentionally pending that external
-finality gate.
+`CONFIRMED` with value `2026-03-11`. Both transactions subsequently reached protocol
+`FINALIZED`; the finalized contract state and all read-only contract fields were independently
+verified.
 
 Stage 5 — Bradbury deployment and one live resolution — is **required, not optional**: the
 submission needs a GenLayer Explorer contract URL.

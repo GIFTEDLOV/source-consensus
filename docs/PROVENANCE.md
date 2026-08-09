@@ -84,7 +84,7 @@ documentation separates the optional GenVM engine version line from the JSON `De
 the exact hashed `py-genlayer` header remains the runtime dependency selector, while the warning
 describes the default engine-version field. This is documented evidence, not a header change; a
 the successful constructor and exact accepted-state source bytes provide operational evidence that
-the header was accepted; the separate protocol finality gate is recorded below.
+the header was accepted; the later protocol-finality result is recorded below.
 
 Attempt 4 succeeded through deployment, initialization, and one live resolution using the official
 native deploy-script transport:
@@ -110,7 +110,18 @@ Independent read-back confirmed every `get_config()` field, all three `get_sourc
 `get_result()`, `get_record()`, `status()`, `value()`, `is_resolved()`, and unchanged
 `configuration_hash()`. The canonical record re-derives to the observed result.
 
-Bradbury does not expose literal `FINALIZED` for these successful transactions: a read-only
-`waitForTransactionReceipt(status: FINALIZED)` timed out at status code `5` (`ACCEPTED`), while the
-documented `gen_getContractCode` call returned exact source bytes at `accepted` and not at `finalized`.
-No extra finalization transaction was sent. This is the only remaining release-gate discrepancy.
+Read-only finality closure observations on `2026-08-09` returned the following through
+`gen_getTransactionStatus`:
+
+- deployment observed `2026-08-09T14:41:33.4597799Z`: `Finalized`, status code `7`
+- resolve observed `2026-08-09T14:41:33.8895858Z`: `Finalized`, status code `7`
+
+`gen_getContractState` returned state for both `accepted` and `finalized` at
+`2026-08-09T14:42:57.7043519Z` and `2026-08-09T14:42:59.6410351Z`. Each response contained
+299,932 hex characters and had the same response fingerprint
+`832d5664e73a74c3b043037e7eef66b2e5cf953b600b273641389a33e56e1584`.
+
+Finalized-state readback at `2026-08-09T14:44:22.312Z` independently confirmed every observable
+`get_config()` field, `is_resolved() == true`, status `CONFIRMED`, value `2026-03-11`, and the
+expected configuration hash `0x14000a8af1488048755b93a32a7fa31ded90897e62d28aad875dc9a087d427cc`.
+No additional transaction was submitted.

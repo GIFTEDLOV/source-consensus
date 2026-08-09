@@ -157,7 +157,7 @@ result using the README alone.
 
 ---
 
-## Stage 5 — Bradbury deployment and one live resolution *(live flow complete; strict finality pending)*
+## Stage 5 — Bradbury deployment and one live resolution *(COMPLETE)*
 
 - `docs/DEPLOYMENT.md` written **before** any transaction is signed: network, RPC, chain ID, source
   hash, constructor fields, expected `configuration_hash`, deployment command, verification
@@ -185,9 +185,10 @@ configuration hash, and the initial unresolved state all matched. Exactly one li
 submitted and completed with `AGREE` / `FINISHED_WITH_RETURN`, returning `CONFIRMED` and
 `2026-03-11`; its record and source buckets re-derived independently.
 
-Bradbury currently reports both transactions as `ACCEPTED` and a read-only wait for literal
-`FINALIZED` timed out. No additional transaction was submitted. The operational flow is complete,
-but the strict Stage 5 release gate remains blocked on externally observable finality.
+Read-only finality closure later returned `FINALIZED` / status code `7` for both transactions.
+`gen_getContractState(status: finalized)` returned the deployed state, and the finalized reads
+reproduced the expected configuration hash, `CONFIRMED` status, and `2026-03-11` value. No
+additional transaction was submitted.
 
 ---
 

@@ -110,11 +110,12 @@ hashing all three pinned sources:
 The account ended at nonce `10` and balance `2.974018148455848753 GEN`; total cost across deployment
 and resolve was `0.005365373336699400 GEN`.
 
-Bradbury's transaction object remains protocol status `ACCEPTED` (status code `5`). A read-only wait
-for literal `FINALIZED` timed out for both transactions, and `gen_getContractCode` returned the
-source at `accepted` but not at `finalized`. No extra finalization transaction was submitted. Stage 5
-is operationally resolved, but the strict `FINALIZED` release gate remains an external Bradbury
-status blocker.
+Read-only finality closure at `2026-08-09T14:41:33Z` returned `Finalized` / status code `7` for both
+the deployment and resolve transactions. At `2026-08-09T14:42:57Z`-`14:42:59Z`,
+`gen_getContractState` returned both accepted and finalized state; both encoded states were 299,932
+hex characters with the same SHA-256 fingerprint
+`832d5664e73a74c3b043037e7eef66b2e5cf953b600b273641389a33e56e1584`. No additional transaction
+was submitted.
 
 ## Attempt 4 transport gate (pre-transaction)
 
@@ -131,5 +132,5 @@ line-1 `Depends` header, and AST parity with the canonical source. The runner wa
 the GenVM text-runner parser's optional `v<...>` engine-version line: without that separate line it
 selects its default engine version while the JSON `Depends` entry still identifies the content-hashed
 `py-genlayer` dependency. The current runner documentation specifies the one-line hashed `Depends`
-form used here, so the header was not changed. A successful Bradbury constructor is now recorded
-above. Literal `FINALIZED` remains the only unmet release gate.
+form used here, so the header was not changed. A successful Bradbury constructor and finalized
+state are recorded above.
