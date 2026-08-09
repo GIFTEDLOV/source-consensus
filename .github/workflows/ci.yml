@@ -257,5 +257,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install pytest==8.3.4
       - run: python tools/convergence.py --report artifacts/convergence-summary.json
       - run: pytest tests/unit/test_convergence.py -v --tb=short
