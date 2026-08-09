@@ -220,6 +220,7 @@ def main() -> int:
     parser.add_argument("--timeout", type=int, default=30)
     args = parser.parse_args()
     result = run_online(args.out, args.repeats, args.timeout) if os.getenv("OPENROUTER_API_KEY") else offline_report()
+    args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(json.dumps(result, indent=2, ensure_ascii=False))
     return 0 if all(x.get("pass", True) for x in result.get("fixtures", []) + result.get("adversarial", [])) else 1
