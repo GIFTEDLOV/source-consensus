@@ -1,5 +1,10 @@
 # Deployment
 
+> Attempt 4 and `v1.0.0-bradbury` are
+> `SUPERSEDED_AFTER_STEWARD_CONSENSUS_BINDING_REVIEW`. Their records below remain historical and are
+> not altered or reused. The corrected deployment must be a new schema-version-2 instance from a
+> new exact-head artifact after every gate in this document passes.
+
 This document contains the pre-transaction procedure and the recorded Stage 5 attempts. The first
 three attempts failed and remain preserved; the native deploy-script attempt 4 produced a usable
 initialized contract and the single planned resolve transaction.
@@ -16,6 +21,19 @@ artifact hash, correct `get_config()` and `get_sources()`, matching `configurati
 finalized result, canonical record, all source buckets, unchanged configuration hash, validator
 votes, and GEN cost. The Explorer URL will be recorded as
 `https://explorer-bradbury.genlayer.com/contract/<address>` after deployment.
+
+## Corrected-release gate
+
+Before any new broadcast require a clean worktree, local HEAD equal to `origin/main`, green CI for
+that exact commit, full tests and mutations green, GenVM lint and semantic validation green, fixture
+and evidence URL checks green, deterministic deployable regeneration, recorded source/artifact
+hashes and bytes, native typed constructor arguments, current Bradbury chain ID/RPC, expected sender,
+and sufficient GEN. Stop on any mismatch. Wait for `FINALIZED`, not merely `ACCEPTED`, for both the
+new deployment and the single corrected `resolve()`.
+
+The successful historical native script is the transport pattern. A corrected script must use a new
+filename and expected schema-v2 configuration hash; `deploy/04_stage5_attempt4.js` remains frozen as
+historical v1 evidence.
 
 ## Attempt Record
 

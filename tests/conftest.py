@@ -61,11 +61,7 @@ def urls(n: int) -> list:
 
 def response(state: str, value=None) -> str:
     """One source's model response, as raw JSON text."""
-    body: dict = {"state": state}
-    if value is not None:
-        body["value"] = value
-    elif state == "VALUE":
-        body["value"] = None
+    body: dict = {"state": state, "value": value}
     return json.dumps(body)
 
 

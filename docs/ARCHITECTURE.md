@@ -83,7 +83,7 @@ class SourceConsensus(gl.Contract):
     @gl.public.view
     def value(self) -> str: ...               # normalised value, or "" when not CONFIRMED
     @gl.public.view
-    def get_result(self) -> dict: ...         # status, value, all four index sets, resolved_at
+    def get_result(self) -> dict: ...         # status, value, all five index sets, resolved_at
     @gl.public.view
     def get_record(self) -> str: ...          # canonical JSON, section 9
     @gl.public.view
@@ -285,7 +285,7 @@ Agreement is set membership, never numeric tolerance — the deliberate departur
 
 ```json
 {
-  "v": 1,
+  "v": 2,
   "configuration_hash": "0x…",
   "query_id": "LEDGERINDEXER_2_0_0_RELEASE_DATE",
   "fact_type": "DATE",
@@ -295,6 +295,7 @@ Agreement is set membership, never numeric tolerance — the deliberate departur
   "conflicting_source_indices": [],
   "unavailable_source_indices": [],
   "ambiguous_source_indices": [],
+  "no_value_source_indices": [],
   "resolved_at": 1786119757
 }
 ```
@@ -303,9 +304,10 @@ Agreement is set membership, never numeric tolerance — the deliberate departur
 addresses, submitter. None is decision-critical; all of it is either prose or identity, and both are
 ways for content to reach a record that is supposed to be reproducible.
 
-Anyone can re-derive the status from the record's own index sets plus the configuration, without
-trusting the contract and without re-running a model. `tools/canonical.py` is an independent second
-implementation for exactly this purpose.
+Anyone can compare the record against `get_sources()` and re-derive the status from the complete
+stored per-source state/value payload plus the immutable configuration, without re-running a model.
+`tools/canonical.py` is an independent second implementation for exactly this purpose. The record
+alone intentionally does not duplicate every per-source value.
 
 **A note on what is lost.** Excluding per-source quotes means a human auditing a `CONFLICTED` result
 cannot see *which sentence* each source was read from without re-fetching. That is a real cost,
@@ -347,59 +349,38 @@ status through any ordering.
 
 ## 11. Consensus design
 
-Leader and validators both run the whole pipeline independently. **A validator never reads bytes the
-leader supplied** — it re-fetches every source from the original URL. That independence is the
-reason the answer means anything: sources are third-party pages, and a leader that could hand over
-its own copy would control the evidence.
+Leader and validators independently run the complete pipeline from the immutable configured URLs.
+They do not share fetched evidence bytes. Schema version 2 has one strict consensus payload; there
+is no diagnostic tier outside consensus.
 
 ### Leader
 
-1. Fetch every configured source (`gl.nondet.web.render`, `mode="text"`), sanitise and clamp.
-2. For each source independently, ask the model for one `(state, value)` pair.
-3. Normalise every returned value; reject the whole response if a `VALUE` does not conform.
-4. Propose the per-source result list.
+1. Fetch every URL inside the nondeterministic block, sanitize, and clamp.
+2. Extract one source-specific `(state, value)` pair per isolated prompt.
+3. Normalize every VALUE and reject malformed output.
+4. Deterministically derive the aggregate and propose exactly N states, N canonical values, status,
+   normalized aggregate value, and all five index sets.
 
 ### Validator
 
-1. Re-fetch every source from the original URL.
-2. Run its own extraction, independently.
-3. Structurally validate the leader's proposal before comparing anything.
-4. Compare only the decision-critical fields (below).
+1. Require the exact canonical payload shape and exactly N ordered source entries.
+2. Require exact state vocabulary, canonical VALUE scalars, and null for every non-VALUE.
+3. Re-derive the leader aggregate from the leader's complete payload and compare all seven derived
+   fields. Reject any internal contradiction before making network/model calls.
+4. Independently fetch and extract every configured source.
+5. Compare every state and normalized value at every immutable source index.
+6. Independently derive and compare all aggregate fields.
 
-### Comparison tiers
+### Post-consensus
 
-| Tier | Fields | Rule |
-| --- | --- | --- |
-| **T1 strict** | derived status · normalised value · `supporting_source_indices` | exact equality |
-| **T2 recorded, not compared** | which non-supporting bucket each remaining source fell into (`NO_VALUE` / `UNAVAILABLE` / `AMBIGUOUS`) | not compared |
-| **T3 free** | any prose the model produced | never compared, never stored |
+The deterministic context validates the returned payload again, copies only its canonical states
+and values, and calls `_derive_status`. Storage never consumes leader-advertised aggregate fields.
 
-### Is per-source equality too strict? Probably, and this is the design's main risk
-
-The obvious rule — every validator must agree on all N `(state, value)` pairs — is the most brittle
-option available, and it is **rejected**. Two honest validators can differ on a source that is vague
-(`AMBIGUOUS` vs `NO_VALUE`) or briefly flaky (`UNAVAILABLE` vs `NO_VALUE`) without disagreeing about
-the answer at all. Requiring identical partitions would fail consensus over differences that change
-nothing.
-
-So T1 pins exactly what an integrator branches on: **the status, the value, and who supported it.**
-If a validator's own extraction produces a different supporting set, it genuinely disagrees and
-should reject. If it only assigns a non-supporting source to a different bucket, the outcome is
-unchanged and consensus should succeed.
-
-**The consequence, stated honestly:** the non-supporting buckets in the stored record are the
-*leader's* partition, agreed by validators only to the extent that it produced the same status. They
-are informative, not consensus-backed, and §9's record must not be read as if all four sets carry
-equal weight. Documenting this is cheaper than pretending otherwise; **Stage 3's harness measures it
-when a provider key is available**, and
-if real models diverge on `supporting_source_indices` even when the status agrees, T1 needs revisiting
-before anything is claimed about convergence.
-
-**Alternatives considered:** comparing the multiset of normalised values without indices (loses which
-source said what — the property §5 exists to provide); comparing only status and value (a validator
-could agree by accident from a different evidence base); LLM-judged comparison via
-`prompt_comparative` (puts the comparison back inside a prompt, which is the thing this design
-removes).
+This is stricter and may reduce liveness when a mutable page, fetch outcome, or model classification
+differs across validators. That tradeoff is required: every entry can affect reachability, conflict,
+status, or a public diagnostic set, so correctness requires every entry to be authenticated. The
+convergence harness measures complete-payload agreement and Bradbury provides the live validator
+evidence; neither may redefine the comparator to improve liveness.
 
 ## 12. Threat model and prompt-injection defence
 
@@ -494,11 +475,12 @@ Stated here so a reviewer does not have to find them.
 4. **Typed values only.** Narrative answers cannot be expressed; `intelligent-oracle` is better for
    those (`OVERLAP-RESEARCH.md` §2).
 5. **Live sources drift** (§13).
-6. **Convergence is empirical.** The T1 rule's real-model behaviour is unmeasured at Stage 1 and is
-   the single largest open question (§11).
+6. **Convergence is empirical.** Complete-payload real-model behavior is not inferred from mocked
+   direct tests; provider runs must report explicit denominators (§11).
 7. **No appeal path in-contract.** GenLayer's protocol-level appeal applies to the transaction; the
    contract adds nothing on top, by choice.
-8. **The non-supporting buckets are the leader's** (§11), and the record must be read accordingly.
+8. **Strict all-source agreement may reduce liveness.** This is accepted because no source entry
+   used by derivation or public output may remain outside validator consensus (§11).
 
 ## 16. Example integrations *(illustrative; working tested consumers are in `examples/`)*
 

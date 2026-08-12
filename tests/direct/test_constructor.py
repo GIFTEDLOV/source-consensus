@@ -124,6 +124,21 @@ class TestRequirePinnedEvidence:
         sc = deploy(n_sources=3, require_pinned_evidence=True)
         assert sc.get_config()["require_pinned_evidence"] is True
 
+    @pytest.mark.parametrize("url", [
+        "https://raw.githubusercontent.com/o/r/main/file.md",
+        "https://raw.githubusercontent.com/o/r/" + "a" * 39 + "/file.md",
+        "https://github.com/o/r/blob/main/file.md",
+        "https://github.com/o/r/blob/v1.0.0/file.md",
+    ])
+    def test_branch_tag_and_short_hash_urls_cannot_masquerade_as_pinned(self, deploy, url):
+        with pytest.raises(Exception):
+            deploy(source_urls=[src(0), url], require_pinned_evidence=True)
+
+    def test_exact_github_commit_url_is_pinned(self, deploy):
+        url = "https://github.com/o/r/blob/" + "b" * 40 + "/file.md"
+        sc = deploy(source_urls=[src(0), url], require_pinned_evidence=True)
+        assert [source["url_class"] for source in sc.get_sources()] == ["PINNED", "PINNED"]
+
 
 class TestThresholds:
     def test_minimum_below_floor_rejected(self, deploy):

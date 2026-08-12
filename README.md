@@ -2,215 +2,134 @@
 
 **What single value do these specific public sources say, and do they agree?**
 
-A reusable GenLayer Intelligent Contract primitive. Not an application. It holds no value, has no
-parties, settles nothing, and has no admin functions. It resolves one bounded, typed fact from 2–5
-independently fetchable public sources and publishes a consensus-backed result other contracts can
-branch on.
+SourceConsensus is a reusable GenLayer Intelligent Contract primitive. One deployment resolves one
+immutable typed question from 2–5 explicit public HTTPS sources. It has no admin, mutable source
+list, search, parties, escrow, payout, or value-transfer logic.
 
-> **Status: Stage 5 complete on Bradbury; release evidence finalized.**
-> Attempt 4 deployed and initialized the contract, and exactly one live resolution returned
-> `CONFIRMED` with value `2026-03-11`. Both transactions reached protocol `FINALIZED`.
-> Nine fixture cases · commit-pinned evidence corpus · derivation rules executable today.
+> **Security-remediation status:** `v1.0.0-bradbury` deployed and finalized successfully, but the
+> steward rejected its consensus boundary. Validators bound aggregate/supporting detail while the
+> contract later derived storage from every leader-provided source entry. That deployment is
+> `SUPERSEDED_AFTER_STEWARD_CONSENSUS_BINDING_REVIEW` and must not be resubmitted as secure.
 >
-> **Recommendation: MODIFY**, scoring **63/80 as briefed** against a 65 threshold.
-> The category is already occupied by an official implementation, and the method is carried from
-> this author's previous submission. Both are disclosed in
-> [`docs/OVERLAP-RESEARCH.md`](docs/OVERLAP-RESEARCH.md) before anything else is claimed.
+> The corrected schema version 2 binds every per-source state and normalized value, verifies the
+> leader aggregate by deterministic re-derivation, independently reproduces the full extraction,
+> and re-derives storage from the same validated payload. A new Bradbury address and corrected tag
+> will be published only after the exact-head security, CI, artifact, finality, and live-proof gates
+> in [`docs/RESUBMISSION.md`](docs/RESUBMISSION.md) pass.
 
----
+## Contract model
 
-## What already exists, and what is different
+The model receives exactly one source per prompt and returns exactly one JSON object:
 
-[`genlayerlabs/intelligent-oracle`](https://github.com/genlayerlabs/intelligent-oracle) already
-resolves prediction-market questions from multiple real-world sources. It is official, it works, and
-it is more flexible than this design in ways [`docs/OVERLAP-RESEARCH.md`](docs/OVERLAP-RESEARCH.md)
-§2 sets out. **Multi-source fact resolution on GenLayer is not new and this repository does not claim
-it is.**
-
-The difference is one line. `IntelligentOracle.py` line 299:
-
-```python
-self.outcome = result_dict["outcome"]
+```json
+{"state":"VALUE|NO_VALUE|AMBIGUOUS","value":"canonical scalar or null"}
 ```
 
-The final answer is a string the model wrote. Reconciling several disagreeing sources is done by a
-**second LLM call** whose prompt reads all the per-source analyses and picks the result.
+`UNAVAILABLE` is determined only by the contract's fetch outcome. The model has no field for an
+aggregate status, threshold, confidence, source list, or other source. The contract normalizes each
+VALUE and deterministically derives one of four statuses:
 
-SourceConsensus splits it the other way. The model is asked only *"what value does **this one**
-source state?"* — once per source, each in its own prompt. Everything after that is arithmetic:
-
-```
-model  ->  [ {source 0: VALUE "2026-02-09"},
-             {source 1: VALUE "2026-02-09"},
-             {source 2: VALUE "2026-02-16"},
-             {source 3: VALUE "2026-02-16"} ]
-
-contract -> status = CONFLICTED        (two values, each reaching the threshold)
-            value  = null
-            supporting  = []
-            conflicting = [0, 1, 2, 3]
-```
-
-No field in the model's response can hold a status. The contract derives it.
-
-| | `intelligent-oracle` | SourceConsensus |
-| --- | --- | --- |
-| Per-source extraction | LLM | LLM |
-| **Cross-source reconciliation** | **LLM (second prompt)** | **deterministic contract logic** |
-| Final status | model writes the string | derived; no field exists for it |
-| Disagreement | collapsed to one word + prose | four index sets, on chain |
-| Answer shape | free text from a list | typed and normalised |
-| Config identity | none | `configuration_hash` |
-
-**Honest counterweight:** *"don't trust the model's verdict string"* is **not** novel here.
-`genlayer-acp-evaluator` already does it, in a comment, at line 64. What appears to be unimplemented
-in the ecosystem is doing it **across sources**, with typed normalisation and structured
-disagreement. That is an increment on an occupied idea, and the novelty score says so.
-
-## The four statuses
-
-Derived by [`tools/canonical.py`](tools/canonical.py) `derive_status`, in this precedence:
-
-| # | Condition | Status | What an integrator should do |
+| Precedence | Condition | Status | Lifecycle |
 | --- | --- | --- | --- |
-| 1 | too few sources reachable to have met the threshold | `UNAVAILABLE` | retry — this is a fetch failure, not a fact |
-| 2 | ≥ 2 distinct values each reach `conflict_threshold` | `CONFLICTED` | escalate — the sources genuinely disagree |
-| 3 | leading value reaches the minimum, nothing competes | `CONFIRMED` | act on the value |
-| 4 | otherwise | `INSUFFICIENT_EVIDENCE` | better sources, or a better-typed question |
+| 1 | reachable sources are fewer than `minimum_supporting_sources` | `UNAVAILABLE` | retryable |
+| 2 | multiple values reach `conflict_threshold`, or the lead is tied | `CONFLICTED` | terminal |
+| 3 | one unique value reaches `minimum_supporting_sources` | `CONFIRMED` | terminal |
+| 4 | otherwise | `INSUFFICIENT_EVIDENCE` | terminal |
 
-**Rule 2 sits before rule 3 deliberately.** When two values each have real support, the answer is
-`CONFLICTED` *even if one has more support*. Resolving a genuine dispute by plurality is what a
-prompt would do; refusing to is the point.
+Conflict precedes confirmation. A 3–2 split is `CONFLICTED` when both values reach the configured
+conflict threshold; a tie can never confirm through lexicographic ordering.
 
-## Why the four index sets matter
+Every result exposes five disjoint, sorted index sets: supporting, conflicting, unavailable,
+ambiguous, and no-value. Source order is immutable and hash-significant.
 
-Every result carries `supporting`, `conflicting`, `unavailable` and `ambiguous` source indices. They
-are not decoration — **each one implies a different corrective action**:
+## Steward Consensus-Binding Remediation
 
-```python
-r = oracle.get_result()
-if r["status"] == "CONFLICTED":
-    review(competing_sources=r["conflicting_source_indices"])
-elif r["status"] == "UNAVAILABLE":
-    retry_later(dead=r["unavailable_source_indices"])
-elif r["status"] == "INSUFFICIENT_EVIDENCE":
-    if r["ambiguous_source_indices"]:
-        suggest_retyping_the_query()   # sources answered, but vaguely
-    else:
-        suggest_better_sources()       # sources were simply silent
-```
+Old schema version 1 compared the leader's status, normalized aggregate value, supporting indices,
+and supporting source pairs. It did not bind every non-supporting source entry. Post-consensus code
+then consumed all leader states and values, so unchecked entries could change a claimed
+`CONFIRMED A` payload into `CONFLICTED` during storage derivation.
 
-A status word alone cannot tell you whether to retry, escalate, re-type the question, or find better
-sources. No contract examined during the research exposes this.
+Schema version 2 authenticates one canonical payload containing:
 
-## Normalisation is not a detail
+- exactly N states and N values in configured source order;
+- every exact per-source state and canonical normalized value;
+- status and normalized aggregate value;
+- all five derived index sets.
 
-Three sources saying `2026-01-05`, `5 January 2026` and `January 5, 2026` are stating **one fact**.
-Without normalisation to a canonical form, a unanimous corpus derives `CONFLICTED` — a silent false
-negative that looks like diligence. Fixture `07-normalisation-equivalent` exists to hold this.
+A validator rejects malformed arrays or source pairs, re-derives the leader aggregate, independently
+fetches/extracts all N sources, compares every pair by index, and independently derives all aggregate
+fields. After consensus, storage validates the payload again and derives from its states/values; it
+does not trust leader aggregate fields. The schema bump intentionally changes every configuration
+hash so corrected deployments cannot reuse the identity of the rejected semantics.
 
-| Type | Canonical form | Rejected |
+## Types and normalization
+
+| Type | Canonical form | Rejected examples |
 | --- | --- | --- |
-| `DATE` | `YYYY-MM-DD`, real-calendar validated | `September 2026`, `2026-02-30` |
-| `INTEGER` | strict base-10, bounded, **no floats** | `1,200`, `1.0`, `1e3` |
-| `BOOLEAN` | `true` / `false` | anything else |
-| `ENUM` | exact membership in declared values | undeclared values |
-| `STRING` | normalised, ≤ 200 chars | longer values |
+| `DATE` | real Gregorian `YYYY-MM-DD`, years 0001–9999 | vague or impossible dates |
+| `INTEGER` | strict base-10 string, optional minus, optional configured bounds | floats, exponent, commas, booleans |
+| `BOOLEAN` | `true` / `false` (`yes` / `no` normalize explicitly) | `1`, `0`, uncertain text |
+| `ENUM` | declared member; optional case-insensitive lookup returns declared spelling | undeclared values |
+| `STRING` | whitespace-normalized, optional lower-case policy, at most 200 chars | lists, objects, floats, oversized text |
 
-A `VALUE` whose payload does not normalise is a **malformed response**, not an ambiguous source: the
-whole response is rejected. Repairing it would be guessing at intent, and two validators guessing
-independently is a divergence.
+Malformed model output is rejected, not repaired. This includes surrounding commentary, multiple
+JSON payloads, missing or unexpected fields, unknown or non-exact states, model-supplied
+`UNAVAILABLE`, forbidden aggregate/confidence fields, non-null values on non-VALUE states, and any
+VALUE that fails configured normalization.
 
-## Prompt injection has no channel
+## Prompt and evidence boundary
 
-Fixture `06-injection-redefine` carries a forged `[SYSTEM]` block demanding a changed `fact_type`, a
-forced `CONFIRMED`, an invented `source_index 9`, and the other sources marked `UNAVAILABLE`. Every
-one targets a field the model does not control:
+Each configured URL is HTTPS, unique, bounded, ordered, and classified as pinned or mutable.
+`require_pinned_evidence=true` fails closed unless every URL is commit- or content-addressed.
+Evidence is fetched only inside the nondeterministic block, normalized, visibly truncated at 24,000
+characters, and has fence-like text neutralized before prompting.
 
-| The injection asks for | Why it cannot happen |
-| --- | --- |
-| status `CONFIRMED` | no status field exists in the response schema |
-| `fact_type` changed | constructor state, hashed into `configuration_hash` |
-| add `source_index 9` | indices come from the configured URL list |
-| mark other sources `UNAVAILABLE` | each source is extracted in **its own prompt** |
+One source is never in context while another is extracted. Source text therefore cannot directly
+change the question, type, index, source membership, thresholds, another source's availability, or
+the final status. It can still lie about its own fact. If enough configured sources are wrong in the
+same direction, SourceConsensus can confirm a wrong value; source selection remains the integrator's
+responsibility.
 
-**The worst a compromised source can do is corrupt its own value** — costing it one index out of
-2–5, visible in `conflicting_source_indices`.
+## Immutable configuration identity
 
-**The honest residual:** if a *majority* of configured sources are wrong in the same direction, the
-contract confirms the wrong value. That is a source-selection problem and no contract-side rigour
-fixes it.
+`configuration_hash()` is keccak256 over canonical schema version, query ID, question, fact type,
+normalization rules, enum membership, ordered source URLs, thresholds, and pinned-evidence policy.
+Enum order is canonicalized because membership is a set; source order is preserved because indices
+are semantic. [`tools/canonical.py`](tools/canonical.py) is the independent off-chain oracle.
 
-## Repository
+## Public interface
 
+GenVM lint reports 9 public methods: 1 write and 8 views.
+
+- write: `resolve()`;
+- views: `status()`, `value()`, `get_result()`, `get_record()`, `is_resolved()`, `get_sources()`,
+  `get_config()`, `configuration_hash()`.
+
+`CONFIRMED`, `CONFLICTED`, and `INSUFFICIENT_EVIDENCE` cannot be replayed. `UNAVAILABLE` records the
+complete bound source detail, increments attempts, and leaves the query open for a later retry.
+`resolved_at` is derived in integer arithmetic from the timezone-qualified transaction datetime.
+
+## Verification
+
+```powershell
+python -m pytest
+python tools/validate_fixtures.py
+python tools/convergence.py
+python tools/mutation_test.py
+python tools/source_hash.py --check
+python tools/check_evidence_urls.py
+python tools/make_deployable.py contracts/source_consensus.py artifacts/source_consensus_deployable.py
 ```
-docs/OVERLAP-RESEARCH.md   ecosystem audit, self-overlap disclosure, MODIFY recommendation
-docs/ARCHITECTURE.md       the design; every open question answered in place
-docs/BUILD-PLAN.md         five stages, quality controls, acceptance-bar analysis
-docs/CI.md                 exact CI job definitions
-tools/canonical.py         independent reference implementation -- normalisation, derivation, hash
-tools/make_fixtures.py     generates the fixture cases so the pinned commit lives in one place
-tools/validate_fixtures.py schema + structure + recomputed derivation + URL policy
-tools/check_evidence_urls.py  fetches every pinned URL and compares bytes to the local corpus
-fixtures/cases/            nine cases; all four statuses, nine categories
-fixtures/corpus/           25 evidence documents, served commit-pinned over HTTPS
-```
 
-Try the rules yourself, without a contract:
+The offline convergence harness does not claim real-model measurements. Without
+`OPENROUTER_API_KEY`, provider metrics are explicitly `not-run`. With a key, consensus compatibility
+requires complete ordered source-payload agreement and reports state, normalized-value, every
+aggregate field, and repeatability with explicit n/N denominators.
 
-```bash
-pip install jsonschema "eth-hash[pycryptodome]"
-python tools/validate_fixtures.py      # recomputes all nine expectations
-python tools/canonical.py derive fixtures/cases/03-two-competing.json
-```
+Historical deployment provenance is retained in [`docs/PROVENANCE.md`](docs/PROVENANCE.md). The
+current architecture, derivation, runtime due diligence, threat model, deployment gate, and concise
+steward package are in [`docs/`](docs/).
 
-## Self-overlap, disclosed
-
-This author published [`GIFTEDLOV/semantic-constraint`](https://github.com/GIFTEDLOV/semantic-constraint)
-days before this repository. Its rule is *"the model labels criteria, the contract derives the
-outcome"*; this one's is *"the model extracts per-source values, the contract derives the status"*.
-**That is the same method**, along with the identity hash, the prose-free canonical record, and the
-no-floats rule.
-
-The decision objects genuinely differ — a partition over requirements is not an agreement across
-sources — but the method is reused, and the novelty score reflects that rather than pretending
-otherwise. [`docs/OVERLAP-RESEARCH.md`](docs/OVERLAP-RESEARCH.md) §4 sets out the comparison in
-full.
-
-## Limitations
-
-- One typed value per deployment. Multi-field facts need multiple instances.
-- 2–5 sources. Broad survey questions are out of scope.
-- **The answer is only as good as the source list.** A majority-wrong evidence base yields a
-  confidently wrong `CONFIRMED`.
-- Narrative answers cannot be expressed; `intelligent-oracle` is better for those.
-- Live sources drift between fetches; `require_pinned_evidence` helps only where an immutable form
-  exists.
-- **Real-model convergence is not-run.** The offline harness and adversarial checks pass; the
-  largest open question — [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §11 states the risk and
-Stage 3 measured it offline and documented the real-model run as not-run because no OpenRouter key
-was available.
-
-## Stage 3 convergence
-
-Run the offline harness with `python tools/convergence.py`. It validates all nine fixtures and
-adversarial response categories without a key. An opt-in OpenRouter run uses five models, logs raw
-JSONL responses, and reports metrics with explicit `n/N` denominators. HTTP 402/429, provider
-errors, transport failures, and truncation are not counted as model disagreement. See
-[`docs/CONVERGENCE-REPORT.md`](docs/CONVERGENCE-REPORT.md).
-
-## Status of this repository
-
-Three failed Bradbury deployments are preserved in [`docs/PROVENANCE.md`](docs/PROVENANCE.md).
-The official native deploy-script transport then completed one deployment and exactly one live
-resolution: constructor execution returned `FINISHED_WITH_RETURN`, and the final result is
-`CONFIRMED` with value `2026-03-11`. Both transactions subsequently reached protocol
-`FINALIZED`; the finalized contract state and all read-only contract fields were independently
-verified.
-
-Stage 5 — Bradbury deployment and one live resolution — is **required, not optional**: the
-submission needs a GenLayer Explorer contract URL.
-
-## Licence
+## License
 
 MIT. See [`LICENSE`](LICENSE).

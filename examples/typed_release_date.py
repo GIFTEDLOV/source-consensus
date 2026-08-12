@@ -19,7 +19,7 @@ CONFIG = {
 }
 
 def expected_configuration_hash() -> str:
-    payload = {"v": 1, **CONFIG}
+    payload = {"v": 2, **CONFIG}
     return "0x" + keccak(json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hex()
 
 def read_confirmed_date(oracle: Any) -> str:

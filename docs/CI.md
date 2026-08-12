@@ -131,8 +131,9 @@ output rather than on `hashFiles`, so a skip can only ever mean "no tests exist"
 ## Job 9 — `mutation-tests` *(active from Stage 2)*
 
 Breaks each load-bearing behaviour in turn and re-runs the suite: the four derivation precedence
-rules, the tie-break, normalisation rejection, index-set construction, the prompt fences, and the T1
-comparator. A mutation that survives means no test would notice that behaviour breaking, and fails
+rules, the tie-break, normalisation rejection, index-set construction, prompt fences, complete
+source-payload comparator, leader self-derivation, and post-consensus storage boundary. A mutation
+that survives means no test would notice that behaviour breaking, and fails
 the build.
 
 **Detection criterion.** A mutation counts as caught only when *named tests fail*, never when the

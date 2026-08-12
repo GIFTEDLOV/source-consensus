@@ -1,15 +1,20 @@
 # Consensus Notes
 
-The model extracts one `(state, value)` pair per source. The contract, not the model, derives the
-aggregate status. Normalization is strict and deterministic: malformed `VALUE` output is rejected;
-it is never repaired into a guess.
+Schema version 2 binds the complete ordered per-source payload. The leader and each validator fetch
+the same immutable configured URL list independently and extract one `(state, normalized value)`
+pair per isolated prompt. The contract, not the model, derives the aggregate.
 
-Derivation follows `docs/DERIVATION.md`: too few reachable sources yields `UNAVAILABLE`; two
-supported contenders or a top tie yields `CONFLICTED`; a unique value meeting the minimum yields
-`CONFIRMED`; otherwise the result is `INSUFFICIENT_EVIDENCE`. Supporting, conflicting, unavailable,
-ambiguous, and no-value indices preserve the evidence partition.
+Before independent extraction, a validator requires exactly N states and values, exact state
+vocabulary, canonical VALUE scalars, and null for non-VALUE states. It runs `_derive_status` over
+the leader payload and requires exact equality for status, normalized aggregate value, supporting,
+conflicting, unavailable, ambiguous, and no-value indices. It then independently reproduces all N
+source pairs and the aggregate. Any source mismatch is `DISAGREE`.
 
-GenLayer's T1 comparator checks status, normalized value, supporting indices, and the value/state of
-each supporting source. Non-supporting buckets are recorded but not compared, because an
-`AMBIGUOUS` versus `NO_VALUE` distinction cannot change the answer. Stage 3 measures how often that
-tradeoff occurs in real models; no convergence claim is made without denominators.
+Post-consensus deterministic code validates the returned payload again and re-derives storage from
+its bound states/values. This intentionally supersedes schema version 1's supporting-only boundary.
+The stronger rule may reduce liveness under fetch/model variance, but no decision-relevant or public
+diagnostic field remains outside the Equivalence Principle.
+
+Derivation follows [`DERIVATION.md`](DERIVATION.md): insufficient reachability yields
+`UNAVAILABLE`; qualifying competing values or a top tie yield `CONFLICTED`; a unique leader meeting
+minimum support yields `CONFIRMED`; otherwise the result is `INSUFFICIENT_EVIDENCE`.

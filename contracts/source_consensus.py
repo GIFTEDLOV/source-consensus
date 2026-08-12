@@ -37,7 +37,7 @@ from genlayer import *
 # Schema
 # ---------------------------------------------------------------------------------------------
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 """Bumped whenever the canonical serialisation or the record shape changes. Part of both hashes,
 so a bump changes `configuration_hash` for every instance -- deliberately, because a consumer that
 pinned an older hash must re-review rather than silently inherit new semantics."""
@@ -65,6 +65,7 @@ MAX_VALUE_LEN = 200
 MAX_ENUM_VALUES = 16
 MAX_ENUM_VALUE_LEN = 64
 MAX_EVIDENCE_CHARS = 24_000
+MAX_MODEL_OUTPUT_CHARS = 2_048
 MAX_RECORD_LEN = 2_048
 
 MIN_SUPPORT_FLOOR = 2
@@ -130,31 +131,33 @@ _CONTROL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
 _DAYS_IN_MONTH = (31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
 
-# ---------------------------------------------------------------------------------------------
-# STAGE 3 RISK MARKER
-#
-# STAGE3_RISK_T2_BUCKETS
-#
-# Which non-supporting bucket a source falls into (NO_VALUE / UNAVAILABLE / AMBIGUOUS) is
-# RECORDED but NOT COMPARED between validators. Two honest validators can differ on whether a
-# vague page is AMBIGUOUS or NO_VALUE, or whether a flaky host is UNAVAILABLE, without disagreeing
-# about the answer -- none of those states supports a value, so none can move a row in the
-# derivation table.
-#
-# The consequence is that the T2 buckets in the stored record are the LEADER'S partition. They are
-# informative, not consensus-backed.
-#
-# A green Direct Mode suite proves the RULE holds. It does not prove real models agree often
-# enough for the rule to be comfortable, and it must not be read as if it did. Stage 3's
-# convergence harness must measure:
-#
-#   (a) how often independent models produce the same supporting_source_indices (T1 -- if this
-#       diverges, T1 itself is wrong and must be revised before any convergence claim);
-#   (b) how often they disagree on T2 buckets while agreeing on T1 (the cost of this choice);
-#   (c) whether AMBIGUOUS is reported consistently enough to be worth surfacing at all.
-# ---------------------------------------------------------------------------------------------
+# The schema version is 2 because the validator-consensus schema changed materially after steward
+# review of v1.0.0-bradbury.  Every field below is now authenticated as one canonical payload.
+# Version 1 compared only aggregate/supporting detail even though final derivation consumed every
+# source entry.  Version 2 binds every source state/value and independently derives every aggregate
+# field before any result may reach storage.  Because SCHEMA_VERSION is in the configuration hash,
+# no deployment can silently retain the identity of the rejected semantics.
+FULL_CONSENSUS_PAYLOAD_FIELDS = (
+    "states",
+    "values",
+    "status",
+    "normalized_value",
+    "supporting_source_indices",
+    "conflicting_source_indices",
+    "unavailable_source_indices",
+    "ambiguous_source_indices",
+    "no_value_source_indices",
+)
 
-STAGE3_RISK_T2_BUCKETS = "non-supporting bucket detail is leader-recorded, not consensus-backed"
+DERIVED_CONSENSUS_FIELDS = (
+    "status",
+    "normalized_value",
+    "supporting_source_indices",
+    "conflicting_source_indices",
+    "unavailable_source_indices",
+    "ambiguous_source_indices",
+    "no_value_source_indices",
+)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -272,7 +275,9 @@ def _validate_url(field: str, url: str) -> str:
 
 
 def _is_real_date(y: int, m: int, d: int) -> bool:
-    if m < 1 or m > 12 or d < 1:
+    # Four decimal digits are accepted by the surface grammar, but year 0000 is not a real date
+    # in the proleptic Gregorian calendar used by Python/GenVM and must not enter consensus.
+    if y < 1 or m < 1 or m > 12 or d < 1:
         return False
     limit = _DAYS_IN_MONTH[m - 1]
     if m == 2 and (y % 4 == 0 and (y % 100 != 0 or y % 400 == 0)):
@@ -295,16 +300,23 @@ def _normalise_value(
     """
     if raw is None:
         return None
-    if isinstance(raw, bool):
-        # bool before int: `isinstance(True, int)` is True, and "true" is only a valid BOOLEAN.
-        text = "true" if raw else "false"
-    elif isinstance(raw, int):
+    if fact_type == FACT_INTEGER:
+        if isinstance(raw, bool) or not isinstance(raw, (int, str)):
+            return None
         text = str(raw)
-    elif isinstance(raw, str):
-        text = raw
+    elif fact_type == FACT_BOOLEAN:
+        if isinstance(raw, bool):
+            text = "true" if raw else "false"
+        elif isinstance(raw, str):
+            text = raw
+        else:
+            return None
     else:
-        # Floats, lists, dicts. A float reaching here is a schema violation, not a value.
-        return None
+        # DATE, ENUM, and STRING are textual types. Coercing JSON numbers/booleans into text would
+        # repair a wrong scalar type and could make two validators authenticate different syntax.
+        if not isinstance(raw, str):
+            return None
+        text = raw
 
     text = _normalise_text(text)
     if not text:
@@ -664,19 +676,23 @@ def _parse_json_object(raw: typing.Any) -> dict:
         return raw
     if not isinstance(raw, str):
         _fail(ERROR_LLM, f"model returned {type(raw).__name__}, expected an object")
+    if len(raw) > MAX_MODEL_OUTPUT_CHARS:
+        _fail(ERROR_LLM, f"model output exceeds {MAX_MODEL_OUTPUT_CHARS} characters")
     text = raw.strip()
     if text.startswith("```"):
         nl = text.find("\n")
-        if nl != -1:
-            text = text[nl + 1 :]
-        if text.rstrip().endswith("```"):
-            text = text.rstrip()[:-3]
-    first = text.find("{")
-    last = text.rfind("}")
-    if first == -1 or last == -1 or last < first:
-        _fail(ERROR_LLM, "model output contains no JSON object")
+        if nl == -1 or not text.endswith("```"):
+            _fail(ERROR_LLM, "model output has an incomplete markdown fence")
+        fence_label = text[:nl]
+        if fence_label not in ("```", "```json", "```JSON"):
+            _fail(ERROR_LLM, "model output has an unsupported markdown fence")
+        text = text[nl + 1 : -3].strip()
+    # Do not search for an object inside commentary.  Accepting a valid substring from a larger
+    # response would silently discard semantic material and makes concatenated JSON ambiguous.
+    if not text.startswith("{") or not text.endswith("}"):
+        _fail(ERROR_LLM, "model output must contain exactly one JSON object")
     try:
-        parsed = json.loads(text[first : last + 1])
+        parsed = json.loads(text)
     except Exception:
         _fail(ERROR_LLM, "model output is not valid JSON")
     if not isinstance(parsed, dict):
@@ -702,7 +718,6 @@ def _normalise_source_output(
     state = parsed["state"]
     if not isinstance(state, str):
         _fail(ERROR_LLM, "'state' must be a string")
-    state = _normalise_text(state).upper()
 
     # UNAVAILABLE is a fetch outcome the CONTRACT determines. A model claiming it would be
     # reporting on something it cannot observe -- it only ever sees text that was fetched
@@ -716,10 +731,16 @@ def _normalise_source_output(
         if forbidden in parsed:
             _fail(ERROR_LLM, f"model output contains a forbidden field {forbidden!r}")
 
-    raw_value = parsed.get("value")
+    for key in parsed:
+        if key not in ("state", "value"):
+            _fail(ERROR_LLM, f"model output contains an unexpected field {key!r}")
+    if "value" not in parsed:
+        _fail(ERROR_LLM, "model output is missing 'value'")
+
+    raw_value = parsed["value"]
 
     if state != STATE_VALUE:
-        if raw_value is not None and _normalise_text(str(raw_value)) != "":
+        if raw_value is not None:
             _fail(ERROR_LLM, f"state {state} must not carry a value")
         return {"state": state, "value": None}
 
@@ -745,43 +766,170 @@ def _normalise_source_output(
 # ---------------------------------------------------------------------------------------------
 
 
-def _agree(leader: dict, own: dict, n: int) -> bool:
-    """Compare a validator's independent result against the leader's proposal.
+def _validate_consensus_payload(
+    payload: typing.Any,
+    n: int,
+    fact_type: str,
+    case_policy: str,
+    min_value: typing.Any,
+    max_value: typing.Any,
+    allowed: list,
+    min_support: int,
+    conflict_threshold: int,
+) -> typing.Any:
+    """Return the canonical fully derived payload, or None when any byte is untrusted.
 
-    T1 (strict): the derived status, the normalised value, the supporting index set, and the
-    (state, value) of every source in that set.
-
-    T2 (recorded, NOT compared): which non-supporting bucket each remaining source fell into.
-    Two honest validators can differ on AMBIGUOUS versus NO_VALUE for a vague page, or on
-    UNAVAILABLE for a flaky host, WITHOUT disagreeing about the answer -- none of those states
-    supports a value, so none can move a row in the derivation table. Requiring identical
-    partitions would fail consensus over differences that change nothing.
-
-    See STAGE3_RISK_T2_BUCKETS: the rule is proven here, but how often real models exercise it is
-    a Stage 3 measurement, not something a green suite establishes.
+    This is the validator-side schema and leader-self-consistency gate.  It is intentionally
+    strict: arrays have exactly one entry per configured source, states use the exact contract
+    vocabulary, VALUE entries already carry their canonical normalized scalar, and every other
+    state carries JSON null.  Aggregate fields are accepted only when deterministic derivation of
+    the same full source payload reproduces all of them exactly.
     """
-    if leader["status"] != own["status"]:
+    if not isinstance(payload, dict):
+        return None
+    if len(payload) != len(FULL_CONSENSUS_PAYLOAD_FIELDS):
+        return None
+    for key in FULL_CONSENSUS_PAYLOAD_FIELDS:
+        if key not in payload:
+            return None
+
+    states = payload["states"]
+    values = payload["values"]
+    if not isinstance(states, list) or not isinstance(values, list):
+        return None
+    if len(states) != n or len(values) != n:
+        return None
+
+    canonical_states: list = []
+    canonical_values: list = []
+    for i in range(n):
+        state = states[i]
+        raw_value = values[i]
+        if not isinstance(state, str) or state not in STATES:
+            return None
+        canonical_states.append(state)
+        if state == STATE_VALUE:
+            normalized = _normalise_value(
+                fact_type, raw_value, case_policy, min_value, max_value, allowed
+            )
+            # The nondeterministic extractor already normalizes.  Accepting a merely
+            # normalizable spelling here would mean validators authenticated different bytes.
+            if normalized is None or raw_value != normalized:
+                return None
+            canonical_values.append(normalized)
+        else:
+            if raw_value is not None:
+                return None
+            canonical_values.append(None)
+
+    derived = _derive_status(
+        canonical_states, canonical_values, min_support, conflict_threshold, n
+    )
+    for key in DERIVED_CONSENSUS_FIELDS:
+        if payload[key] != derived[key]:
+            return None
+
+    derived["states"] = canonical_states
+    derived["values"] = canonical_values
+    return derived
+
+
+def _agree(
+    leader: dict,
+    own: dict,
+    n: int,
+    fact_type: str,
+    case_policy: str,
+    min_value: typing.Any,
+    max_value: typing.Any,
+    allowed: list,
+    min_support: int,
+    conflict_threshold: int,
+) -> bool:
+    """Bind the complete leader payload to a validator's independent full extraction.
+
+    Both sides must first be canonical and self-consistent.  Then every source state and every
+    normalized value is compared at its immutable configured index.  Finally all contract-derived
+    aggregate fields are compared.  There is no non-supporting or diagnostic tier outside
+    consensus: if a field can affect derivation or public output, it is bound here.
+    """
+    checked_leader = _validate_consensus_payload(
+        leader, n, fact_type, case_policy, min_value, max_value, allowed,
+        min_support, conflict_threshold,
+    )
+    if checked_leader is None:
         return False
-    if leader["normalized_value"] != own["normalized_value"]:
+    checked_own = _validate_consensus_payload(
+        own, n, fact_type, case_policy, min_value, max_value, allowed,
+        min_support, conflict_threshold,
+    )
+    if checked_own is None:
         return False
 
-    lead_sup = sorted(leader["supporting_source_indices"])
-    own_sup = sorted(own["supporting_source_indices"])
-    if lead_sup != own_sup:
-        return False
-
-    # The supporting set must be supported for the SAME reason on both sides: same state, same
-    # value, source by source. Agreeing on the conclusion from a different evidence base is
-    # agreement by coincidence.
-    for i in lead_sup:
-        if i < 0 or i >= n:
+    for i in range(n):
+        if checked_leader["states"][i] != checked_own["states"][i]:
             return False
-        if leader["states"][i] != own["states"][i]:
-            return False
-        if leader["values"][i] != own["values"][i]:
+        if checked_leader["values"][i] != checked_own["values"][i]:
             return False
 
+    for key in DERIVED_CONSENSUS_FIELDS:
+        if checked_leader[key] != checked_own[key]:
+            return False
     return True
+
+
+def _prepare_storage_result(
+    payload: typing.Any,
+    n: int,
+    fact_type: str,
+    case_policy: str,
+    min_value: typing.Any,
+    max_value: typing.Any,
+    allowed: list,
+    min_support: int,
+    conflict_threshold: int,
+) -> typing.Any:
+    """Revalidate consensus output and derive the only result storage may consume."""
+    bound = _validate_consensus_payload(
+        payload, n, fact_type, case_policy, min_value, max_value, allowed,
+        min_support, conflict_threshold,
+    )
+    if bound is None:
+        return None
+    states = list(bound["states"])
+    values = list(bound["values"])
+    final = _derive_status(states, values, min_support, conflict_threshold, n)
+    return {"states": states, "values": values, "final": final}
+
+
+# ---------------------------------------------------------------------------------------------
+# Deterministic transaction time
+# ---------------------------------------------------------------------------------------------
+
+
+def _transaction_timestamp(raw: typing.Any) -> int:
+    """Convert the consensus transaction datetime to whole Unix seconds without floats.
+
+    A timezone is mandatory; a naive datetime would be interpreted in each validator host's local
+    timezone.  Fractional seconds are deterministically floored because the public record is
+    intentionally second-granular.
+    """
+    if not isinstance(raw, str):
+        _fail(ERROR_EXPECTED, "transaction datetime must be an ISO string")
+    text = raw[:-1] + "+00:00" if raw.endswith("Z") else raw
+    try:
+        parsed = datetime.fromisoformat(text)
+    except Exception:
+        _fail(ERROR_EXPECTED, "transaction datetime is not valid ISO-8601")
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        _fail(ERROR_EXPECTED, "transaction datetime must include a UTC offset")
+    utc = parsed.astimezone(timezone.utc)
+    epoch = datetime(1970, 1, 1, tzinfo=timezone.utc)
+    delta = utc - epoch
+    seconds = delta.days * 86_400 + delta.seconds
+    if seconds < 0:
+        _fail(ERROR_EXPECTED, "transaction datetime predates the Unix epoch")
+    return seconds
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1089,7 +1237,7 @@ class SourceConsensus(gl.Contract):
         # non-deterministic block. Every validator processes the same message, so they all see the
         # same value without having to agree on one. `gl.message` does not carry it; the raw
         # message does, as an ISO string.
-        now = int(datetime.fromisoformat(gl.message_raw["datetime"]).timestamp())
+        now = _transaction_timestamp(gl.message_raw["datetime"])
 
         def extract_all() -> dict:
             """Fetch and extract every source. One prompt per source, no shared context."""
@@ -1123,41 +1271,34 @@ class SourceConsensus(gl.Contract):
             leader = leaders_res.calldata
             if not isinstance(leader, dict):
                 return False
-            for key in ("status", "normalized_value", "supporting_source_indices",
-                        "states", "values"):
-                if key not in leader:
-                    return False
-            if leader["status"] not in (STATUS_CONFIRMED, STATUS_CONFLICTED,
-                                        STATUS_INSUFFICIENT, STATUS_UNAVAILABLE):
-                return False
-            if len(leader["states"]) != n or len(leader["values"]) != n:
+            # Reject malformed or internally contradictory proposals before validators perform
+            # any web/LLM work.  In particular, advertised aggregates must be the deterministic
+            # derivation of the leader's complete canonical source payload.
+            if _validate_consensus_payload(
+                leader, n, fact_type, case_policy, min_value, max_value, allowed,
+                min_support, ct,
+            ) is None:
                 return False
 
             own = extract_all()
-            return _agree(leader, own, n)
+            return _agree(
+                leader, own, n, fact_type, case_policy, min_value, max_value, allowed,
+                min_support, ct,
+            )
 
         result = gl.vm.run_nondet(extract_all, validator_fn)
 
-        # Re-derive from the agreed per-source results rather than trusting the leader's derived
-        # fields. The comparator already pinned status, value and the supporting set; recomputing
-        # closes the gap for the sets it does not compare, so nothing reaches storage that the
-        # rules did not produce.
-        states = list(result["states"])
-        values = list(result["values"])
-        for i in range(n):
-            if states[i] not in STATES:
-                _fail(ERROR_LLM, f"source {i} has invalid state {states[i]!r}")
-            if states[i] == STATE_VALUE:
-                v = _normalise_value(
-                    fact_type, values[i], case_policy, min_value, max_value, allowed
-                )
-                if v is None:
-                    _fail(ERROR_LLM, f"source {i} value does not normalise after consensus")
-                values[i] = v
-            else:
-                values[i] = None
-
-        final = _derive_status(states, values, min_support, ct, n)
+        # Treat run_nondet's return as untrusted at the deterministic boundary too.  Storage is
+        # derived only from the same complete canonical source payload validators authenticated;
+        # no advertised aggregate field is trusted, and no malformed non-VALUE entry is repaired.
+        storage_result = _prepare_storage_result(
+            result, n, fact_type, case_policy, min_value, max_value, allowed, min_support, ct
+        )
+        if storage_result is None:
+            _fail(ERROR_LLM, "consensus returned a malformed or inconsistent full payload")
+        states = list(storage_result["states"])
+        values = list(storage_result["values"])
+        final = storage_result["final"]
 
         # UNAVAILABLE is retryable, so it writes the source detail but leaves the query open.
         if final["status"] == STATUS_UNAVAILABLE:
@@ -1187,6 +1328,7 @@ class SourceConsensus(gl.Contract):
             "conflicting_source_indices": final["conflicting_source_indices"],
             "unavailable_source_indices": final["unavailable_source_indices"],
             "ambiguous_source_indices": final["ambiguous_source_indices"],
+            "no_value_source_indices": final["no_value_source_indices"],
             "resolved_at": now,
         })
         if len(record) > MAX_RECORD_LEN:

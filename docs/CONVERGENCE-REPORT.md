@@ -1,51 +1,38 @@
-# Stage 3 Convergence Report
+# Convergence Report
 
-## Decision rules
+## Corrected decision rule
 
-The harness measures the contract's T1 comparator as written: status, normalized aggregate value,
-supporting indices, and every supporting source's `(state, value)` must agree. Non-supporting bucket
-differences are recorded but do not count as disagreement. HTTP 402, HTTP 429, provider errors,
-transport failures, empty content, and truncation are rejection/availability outcomes, not model
-disagreement. Every reported metric uses an explicit `n/N` denominator.
+Schema version 2 requires exact agreement on the complete ordered source payload. A convergence run
+is consensus-compatible only if validators agree on every per-source state and normalized value and
+on all deterministically derived aggregate fields. Matching status alone is insufficient.
 
-## Harness
+The harness reports explicit n/N metrics for:
 
-Run offline validation with:
+- full per-source payload agreement;
+- per-source state agreement;
+- per-source normalized-value agreement;
+- aggregate status and normalized-value agreement;
+- supporting, conflicting, unavailable, ambiguous, and no-value set agreement;
+- within-model repeatability;
+- end-to-end consensus-compatible fixtures.
 
-```bash
+HTTP 402/429, provider errors, and transport failures are separately excluded from model-disagreement
+denominators. Empty output, malformed JSON/schema, and normalization failure remain visible rejected
+responses.
+
+## Commands and current evidence
+
+```powershell
 python tools/convergence.py
+$env:OPENROUTER_API_KEY='runtime-only'; python tools/convergence.py --repeats 2
 ```
 
-For the opt-in OpenRouter measurement, set `OPENROUTER_API_KEY` at runtime and run:
+Offline mode validates the fixture derivations and adversarial rejection categories. No provider key
+is available in the repository, so real-provider convergence is **NOT RUN** and no percentages are
+fabricated. Raw online attempts, when explicitly enabled, are JSONL with model, fixture, repeat,
+source index, raw/parsed response, rejection category, usage, cost, and finish reason.
 
-```bash
-OPENROUTER_API_KEY=... python tools/convergence.py --repeats 2
-```
-
-The harness uses the five configured models, all nine fixtures, deterministic temperature `0`,
-contract-aligned one-source prompts, and JSONL logging in `artifacts/convergence.jsonl`. Raw response,
-parsed response, rejection category, usage, cost, and finish reason fields are retained. The key is
-never stored in the repository.
-
-## Offline result
-
-The nine fixture derivations and adversarial rejection cases pass offline. No OpenRouter key was
-available during this release preparation, so real-model metrics are deliberately **not-run**, not
-invented. Consequently valid/attempted, per-model success, status agreement, normalized-value
-agreement, supporting-index agreement, per-source VALUE agreement, bucket disagreement,
-cross-model agreement, repeatability, injection failure rate, and end-to-end pass rate have no
-honest `n/N` result yet.
-
-## Adversarial coverage
-
-Offline tests cover question/fact-type/status redefinition attempts, fake status JSON, forged source
-indices, contradictory/ambiguous dates, normalization-equivalent values, control/trap values, and
-schema rejection. The existing direct-mode corpus additionally covers sentinel fencing, source
-omission, unknown indices, forbidden fields, oversized evidence, and majority-wrong evidence.
-
-## Remaining risk
-
-The unresolved empirical risk is model convergence, especially T2 differences among non-supporting
-`NO_VALUE`, `AMBIGUOUS`, and unavailable buckets and repeatability under provider variation. Run the
-exact command above with a funded key before claiming production convergence; the harness refuses to
-turn transport or credit failures into disagreement statistics.
+Direct-mode tests use mocks and establish rule correctness, not empirical model convergence. The new
+Bradbury live resolve is the required independent-validator evidence for the corrected release. If
+strict full-payload agreement reduces liveness, the failure must be diagnosed and preserved; the
+consensus boundary must not be weakened.

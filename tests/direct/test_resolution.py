@@ -224,6 +224,23 @@ class TestNoFloatsAnywhere:
             assert not isinstance(v, float)
 
 
+class TestWrongScalarTypes:
+    @pytest.mark.parametrize("fact_type,raw,allowed", [
+        ("DATE", 20260311, None),
+        ("STRING", 123, None),
+        ("STRING", True, None),
+        ("ENUM", 1, ["1", "2"]),
+        ("ENUM", True, ["true", "false"]),
+        ("BOOLEAN", 1, None),
+    ])
+    def test_wrong_json_scalar_type_is_rejected(self, run, fact_type, raw, allowed):
+        kwargs = {"fact_type": fact_type}
+        if allowed is not None:
+            kwargs["allowed_enum_values"] = allowed
+        with pytest.raises(Exception):
+            run([value(raw), value(raw)], **kwargs)
+
+
 class TestResultConsistency:
     def test_status_value_and_result_agree(self, run):
         sc, r = run([value("2026-03-11")] * 3)

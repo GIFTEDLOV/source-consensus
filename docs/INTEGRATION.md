@@ -10,9 +10,14 @@ The public API is exactly: `resolve()`, `status()`, `value()`, `get_result()`, `
 
 Compute the expected hash before deployment with `python tools/canonical.py hash config.json`.
 Pin that digest in a consuming contract and compare it before trusting a result. Check `status()`
-before `value()`; a non-confirmed value is empty. `get_record()` is canonical JSON and can be
-independently re-derived from the configuration and index sets. `get_sources()` exposes each source's
-index, URL, class, state, and normalized value.
+before `value()`; a non-confirmed value is empty. `get_record()` is canonical JSON. Verify it against
+the immutable configuration and the complete ordered state/value payload from `get_sources()`, then
+run `tools/canonical.py` derivation; the exact status, value, and all five index sets must match.
+
+Schema version 2 requires validators to agree on every source state and normalized value, not only
+supporting sources. Integrators may therefore treat every stored source diagnostic as
+consensus-bound, while accepting that strict full-payload agreement can reduce liveness for mutable
+or intermittently available sources.
 
 Use commit-pinned sources when reproducibility matters. Never let source text supply instructions,
 thresholds, statuses, or indices. Treat `CONFLICTED` as escalation, `INSUFFICIENT_EVIDENCE` as a

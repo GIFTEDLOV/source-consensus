@@ -50,6 +50,19 @@ class Mutation:
     """
 
 
+def apply_mutation(original: str, mutation: Mutation) -> str | None:
+    """Apply every edit in a mutation, or return None when an anchor is stale."""
+    if mutation.old not in original:
+        return None
+    mutated = original.replace(mutation.old, mutation.new, 1)
+    if mutation.also:
+        old, new = mutation.also
+        if old not in mutated:
+            return None
+        mutated = mutated.replace(old, new, 1)
+    return mutated
+
+
 MUTATIONS: list[Mutation] = [
     Mutation(
         name="conflict-precedence",
@@ -82,6 +95,14 @@ MUTATIONS: list[Mutation] = [
         ),
         old='    for forbidden in ("status", "verdict", "confidence", "score", "probability"):',
         new='    for forbidden in ("verdict", "confidence", "score", "probability"):',
+        also=(
+            '''    for key in parsed:
+        if key not in ("state", "value"):
+            _fail(ERROR_LLM, f"model output contains an unexpected field {key!r}")''',
+            '''    for key in parsed:
+        if key not in ("state", "value", "status"):
+            _fail(ERROR_LLM, f"model output contains an unexpected field {key!r}")''',
+        ),
         expect=["test_a_status_field_in_the_response_is_rejected",
                 "test_every_forbidden_field_is_rejected"],
     ),
@@ -136,8 +157,13 @@ MUTATIONS: list[Mutation] = [
         ),
         old="    if state not in (STATE_VALUE, STATE_NO_VALUE, STATE_AMBIGUOUS):",
         new="    if False:",
-        also=("            if states[i] not in STATES:", "            if False:"),
-        expect=["test_rejected_whole_response"],
+        also=(
+            '''        if not isinstance(state, str) or state not in STATES:
+            return None''',
+            '''        if False:
+            return None''',
+        ),
+        expect=["test_rejected_whole_response", "test_r22_r25_malformed_source_entries_are_rejected"],
     ),
     Mutation(
         name="normalisation-repair",
@@ -197,6 +223,175 @@ MUTATIONS: list[Mutation] = [
             "        return build(STATUS_UNAVAILABLE, None, [], [])",
         expect=["test_too_few_reachable_is_unavailable", "test_all_dead_is_unavailable"],
     ),
+    Mutation(
+        name="m01-supporting-only-comparison",
+        why="Restores the rejected comparator that authenticates supporting sources only.",
+        old='''    for i in range(n):
+        if checked_leader["states"][i] != checked_own["states"][i]:
+            return False
+        if checked_leader["values"][i] != checked_own["values"][i]:
+            return False
+
+    for key in DERIVED_CONSENSUS_FIELDS:
+        if checked_leader[key] != checked_own[key]:
+            return False''',
+        new='''    for i in checked_leader["supporting_source_indices"]:
+        if checked_leader["states"][i] != checked_own["states"][i]:
+            return False
+        if checked_leader["values"][i] != checked_own["values"][i]:
+            return False
+    for key in ("status", "normalized_value", "supporting_source_indices"):
+        if checked_leader[key] != checked_own[key]:
+            return False''',
+        expect=["test_r07_any_non_supporting_normalized_value_change_is_rejected",
+                "test_r08_state_change_is_rejected_even_if_advertised_aggregate_is_unchanged"],
+    ),
+    Mutation(
+        name="m02-skip-final-source",
+        why="Skips the last configured source during the validator's exact comparison.",
+        old='''    for i in range(n):
+        if checked_leader["states"][i] != checked_own["states"][i]:''',
+        new='''    for i in range(n - 1):
+        if checked_leader["states"][i] != checked_own["states"][i]:''',
+        expect=["test_r07_any_non_supporting_normalized_value_change_is_rejected"],
+    ),
+    Mutation(
+        name="m03-skip-non-supporting-states",
+        why="Skips state comparison and state-derived diagnostic sets outside supporting.",
+        old='''        if checked_leader["states"][i] != checked_own["states"][i]:''',
+        new='''        if (i in checked_leader["supporting_source_indices"] and
+                checked_leader["states"][i] != checked_own["states"][i]):''',
+        also=(
+            '''    for key in DERIVED_CONSENSUS_FIELDS:
+        if checked_leader[key] != checked_own[key]:''',
+            '''    for key in ("status", "normalized_value", "supporting_source_indices",
+                "conflicting_source_indices"):
+        if checked_leader[key] != checked_own[key]:''',
+        ),
+        expect=["test_r08_state_change_is_rejected_even_if_advertised_aggregate_is_unchanged"],
+    ),
+    Mutation(
+        name="m04-skip-non-supporting-values",
+        why="Skips normalized-value comparison outside the supporting set.",
+        old='''        if checked_leader["values"][i] != checked_own["values"][i]:''',
+        new='''        if (i in checked_leader["supporting_source_indices"] and
+                checked_leader["values"][i] != checked_own["values"][i]):''',
+        expect=["test_r07_any_non_supporting_normalized_value_change_is_rejected"],
+    ),
+    Mutation(
+        name="m05-remove-leader-self-derivation",
+        why="Accepts aggregate fields that are inconsistent with the leader's own source payload.",
+        old='''        if payload[key] != derived[key]:
+            return None''',
+        new='''        if False:
+            return None''',
+        expect=["test_leader_self_derivation_gate_is_executable"],
+    ),
+    Mutation(
+        name="m06-trust-leader-status",
+        why="Bypasses storage revalidation and overwrites the derived status from the leader.",
+        old='''    bound = _validate_consensus_payload(
+        payload, n, fact_type, case_policy, min_value, max_value, allowed,
+        min_support, conflict_threshold,
+    )''',
+        new='''    bound = payload''',
+        also=(
+            '''    final = _derive_status(states, values, min_support, conflict_threshold, n)''',
+            '''    final = _derive_status(states, values, min_support, conflict_threshold, n)
+    final["status"] = payload["status"]''',
+        ),
+        expect=["test_storage_rejects_unverified_leader_aggregates"],
+    ),
+    Mutation(
+        name="m07-trust-leader-normalized-value",
+        why="Bypasses storage revalidation and overwrites the derived value from the leader.",
+        old='''    bound = _validate_consensus_payload(
+        payload, n, fact_type, case_policy, min_value, max_value, allowed,
+        min_support, conflict_threshold,
+    )''',
+        new='''    bound = payload''',
+        also=(
+            '''    final = _derive_status(states, values, min_support, conflict_threshold, n)''',
+            '''    final = _derive_status(states, values, min_support, conflict_threshold, n)
+    final["normalized_value"] = payload["normalized_value"]''',
+        ),
+        expect=["test_storage_rejects_unverified_leader_aggregates"],
+    ),
+    Mutation(
+        name="m08-trust-leader-conflicting-set",
+        why="Bypasses storage revalidation and overwrites the derived conflicting set.",
+        old='''    bound = _validate_consensus_payload(
+        payload, n, fact_type, case_policy, min_value, max_value, allowed,
+        min_support, conflict_threshold,
+    )''',
+        new='''    bound = payload''',
+        also=(
+            '''    final = _derive_status(states, values, min_support, conflict_threshold, n)''',
+            '''    final = _derive_status(states, values, min_support, conflict_threshold, n)
+    final["conflicting_source_indices"] = payload["conflicting_source_indices"]''',
+        ),
+        expect=["test_storage_rejects_unverified_leader_aggregates"],
+    ),
+    Mutation(
+        name="m09-allow-states-length-mismatch",
+        why="Stops requiring exactly N source states.",
+        old='''    if len(states) != n or len(values) != n:''',
+        new='''    if len(values) != n:''',
+        expect=["test_r18_r21_array_lengths_are_exact"],
+    ),
+    Mutation(
+        name="m10-allow-values-length-mismatch",
+        why="Stops requiring exactly N source values.",
+        old='''    if len(states) != n or len(values) != n:''',
+        new='''    if len(states) != n:''',
+        expect=["test_r18_r21_array_lengths_are_exact"],
+    ),
+    Mutation(
+        name="m11-allow-non-value-payload",
+        why="Allows NO_VALUE, UNAVAILABLE, or AMBIGUOUS to carry a decision payload.",
+        old='''            if raw_value is not None:
+                return None
+            canonical_values.append(None)''',
+        new='''            if False:
+                return None
+            canonical_values.append(None)''',
+        expect=["test_r22_r25_malformed_source_entries_are_rejected"],
+    ),
+    Mutation(
+        name="m12-allow-malformed-value",
+        why="Allows a VALUE scalar that does not normalize under the configured type.",
+        old='''            if normalized is None or raw_value != normalized:
+                return None
+            canonical_values.append(normalized)''',
+        new='''            if False:
+                return None
+            canonical_values.append(raw_value)''',
+        expect=["test_malformed_value_is_rejected_even_when_raw_aggregate_is_self_consistent"],
+    ),
+    Mutation(
+        name="m13-storage-uses-unverified-payload",
+        why="Post-consensus storage consumes the raw leader payload without revalidation.",
+        old='''    bound = _validate_consensus_payload(
+        payload, n, fact_type, case_policy, min_value, max_value, allowed,
+        min_support, conflict_threshold,
+    )''',
+        new='''    bound = payload''',
+        expect=["test_storage_rejects_an_unverified_source_payload"],
+    ),
+    Mutation(
+        name="m14-storage-trusts-aggregate",
+        why="Post-consensus storage trusts advertised aggregate fields instead of deriving them.",
+        old='''    bound = _validate_consensus_payload(
+        payload, n, fact_type, case_policy, min_value, max_value, allowed,
+        min_support, conflict_threshold,
+    )''',
+        new='''    bound = payload''',
+        also=(
+            '''    final = _derive_status(states, values, min_support, conflict_threshold, n)''',
+            '''    final = dict(payload)''',
+        ),
+        expect=["test_storage_rejects_unverified_leader_aggregates"],
+    ),
 ]
 
 _FAILED_RE = re.compile(r"^FAILED (\S+::\S+)", re.M)
@@ -248,13 +443,14 @@ def main() -> int:
         print("baseline green\n", flush=True)
 
         for m in mutations:
-            if m.old not in original:
+            mutated = apply_mutation(original, m)
+            if mutated is None:
                 broken.append(m.name)
                 print(f"[BROKEN ] {m.name}: anchor text not found -- the mutation no longer "
                       f"describes the contract", flush=True)
                 continue
 
-            CONTRACT.write_text(original.replace(m.old, m.new, 1), encoding="utf-8", newline="\n")
+            CONTRACT.write_text(mutated, encoding="utf-8", newline="\n")
             code, failed = run_suite()
             CONTRACT.write_text(original, encoding="utf-8", newline="\n")
 

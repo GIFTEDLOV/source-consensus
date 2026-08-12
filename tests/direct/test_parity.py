@@ -12,6 +12,7 @@ Linux and Windows, because an integrator asserts an off-chain digest against an 
 from __future__ import annotations
 
 import json
+import itertools
 import sys
 from pathlib import Path
 
@@ -24,6 +25,7 @@ from tests.conftest import AMBIGUOUS, NO_VALUE, urls, value  # noqa: E402
 from tools.canonical import (  # noqa: E402
     canonical_json,
     configuration_hash,
+    configuration_payload,
     derive_status,
     normalise_value,
 )
@@ -53,6 +55,15 @@ class TestConfigurationHashParity:
     def test_default(self, deploy):
         sc = deploy(n_sources=3)
         assert sc.configuration_hash() == configuration_hash(reference_config(3))
+
+    def test_schema_v2_changes_the_configuration_identity(self):
+        payload = configuration_payload(reference_config(3))
+        assert payload["v"] == 2
+        old = dict(payload, v=1)
+        from tools.canonical import _keccak256
+
+        old_hash = "0x" + _keccak256(canonical_json(old).encode("utf-8")).hex()
+        assert configuration_hash(reference_config(3)) != old_hash
 
     @pytest.mark.parametrize("n", [2, 3, 4, 5])
     def test_every_source_count(self, deploy, n):
@@ -129,6 +140,39 @@ class TestDerivationParity:
          ["VALUE", "NO_VALUE", "AMBIGUOUS"], ["2026-03-11", None, None]),
     ]
 
+    def test_exhaustive_state_value_matrix_n2_through_n5(self, deploy):
+        """Independent oracle parity for every feasible small-N source-state combination.
+
+        VALUE has two competing values; the other three states carry null. Every legal minimum
+        and conflict threshold is checked for every N, covering 39,000+ derivations.
+        """
+        proxy = deploy(n_sources=2)
+        instance = object.__getattribute__(proxy, "_instance")
+        module = sys.modules[instance.__class__.__module__]
+        options = (
+            ("VALUE", "A"),
+            ("VALUE", "B"),
+            ("NO_VALUE", None),
+            ("UNAVAILABLE", None),
+            ("AMBIGUOUS", None),
+        )
+        checked = 0
+        for n in range(2, 6):
+            for pairs in itertools.product(options, repeat=n):
+                states = [state for state, _ in pairs]
+                values = [value_ for _, value_ in pairs]
+                records = [
+                    {"source_index": i, "state": state, "value": value_}
+                    for i, (state, value_) in enumerate(pairs)
+                ]
+                for minimum in range(2, n + 1):
+                    for conflict in range(1, n + 1):
+                        got = module._derive_status(states, values, minimum, conflict, n)
+                        want = derive_status(records, minimum, conflict, n)
+                        assert got == want, (n, pairs, minimum, conflict, got, want)
+                        checked += 1
+        assert checked == 70800
+
     @pytest.mark.parametrize("name,responses,states,values",
                              SCENARIOS, ids=[s[0] for s in SCENARIOS])
     def test_contract_matches_reference(self, deploy, sources_available, llm_per_source,
@@ -163,7 +207,7 @@ class TestRecordParity:
             2, 2, 3,
         )
         expected = json.loads(canonical_json({
-            "v": 1,
+            "v": 2,
             "configuration_hash": sc.configuration_hash(),
             "query_id": "RELEASE_DATE",
             "fact_type": "DATE",
@@ -173,12 +217,14 @@ class TestRecordParity:
             "conflicting_source_indices": want["conflicting_source_indices"],
             "unavailable_source_indices": want["unavailable_source_indices"],
             "ambiguous_source_indices": want["ambiguous_source_indices"],
+            "no_value_source_indices": want["no_value_source_indices"],
             "resolved_at": stored["resolved_at"],
         }))
         assert stored == expected
 
-    def test_the_record_rederives_to_its_own_status(self, deploy, sources_available,
-                                                    llm_per_source):
+    def test_the_record_and_complete_stored_sources_rederive_exactly(
+        self, deploy, sources_available, llm_per_source
+    ):
         """An integrator can confirm the contract applied its own rules, without a model."""
         sc = deploy(n_sources=4, fact_type="STRING")
         sources_available(n=4)
@@ -186,23 +232,21 @@ class TestRecordParity:
         sc.resolve()
         rec = json.loads(sc.get_record())
 
-        rebuilt = []
-        for i in rec["supporting_source_indices"]:
-            rebuilt.append({"source_index": i, "state": "VALUE",
-                            "value": rec["normalized_value"]})
-        for i in rec["conflicting_source_indices"]:
-            rebuilt.append({"source_index": i, "state": "VALUE", "value": "__other__"})
-        for i in rec["unavailable_source_indices"]:
-            rebuilt.append({"source_index": i, "state": "UNAVAILABLE", "value": None})
-        for i in rec["ambiguous_source_indices"]:
-            rebuilt.append({"source_index": i, "state": "AMBIGUOUS", "value": None})
-        covered = {r["source_index"] for r in rebuilt}
-        for i in range(4):
-            if i not in covered:
-                rebuilt.append({"source_index": i, "state": "NO_VALUE", "value": None})
-
-        again = derive_status(sorted(rebuilt, key=lambda r: r["source_index"]), 2, 2, 4)
-        assert again["status"] == rec["status"]
+        rebuilt = [
+            {
+                "source_index": source["source_index"],
+                "state": source["state"],
+                "value": source["value"] if source["state"] == "VALUE" else None,
+            }
+            for source in sc.get_sources()
+        ]
+        again = derive_status(rebuilt, 2, 2, 4)
+        for key in (
+            "status", "normalized_value", "supporting_source_indices",
+            "conflicting_source_indices", "unavailable_source_indices",
+            "ambiguous_source_indices", "no_value_source_indices",
+        ):
+            assert again[key] == rec[key]
 
 
 class TestNormalisationParity:

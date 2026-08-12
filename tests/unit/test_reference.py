@@ -194,6 +194,7 @@ class TestNormalisation:
         ("2026-02-30", None),
         ("2026-13-01", None),
         ("2026-00-10", None),
+        ("0000-01-01", None),
         ("March 2026", None),
         ("2026-03", None),
         ("11/03/2026", None),
@@ -253,6 +254,17 @@ class TestNormalisation:
         for t in ("STRING", "INTEGER", "BOOLEAN", "DATE", "ENUM"):
             assert normalise_value(t, 1.5, {"allowed_enum_values": ["1.5"]}) is None
 
+    @pytest.mark.parametrize("fact_type,raw,rules", [
+        ("DATE", 20260311, {}),
+        ("STRING", 123, {}),
+        ("STRING", True, {}),
+        ("ENUM", 1, {"allowed_enum_values": ["1", "2"]}),
+        ("ENUM", True, {"allowed_enum_values": ["true", "false"]}),
+        ("BOOLEAN", 1, {}),
+    ])
+    def test_wrong_json_scalar_type_is_not_repaired(self, fact_type, raw, rules):
+        assert normalise_value(fact_type, raw, rules) is None
+
 
 class TestConfigurationHash:
     def test_deterministic(self):
@@ -285,6 +297,15 @@ class TestConfigurationHash:
         a = dict(BASE, fact_type="INTEGER", normalization_rules={"min_value": 0})
         b = dict(BASE, fact_type="INTEGER", normalization_rules={"min_value": 1})
         assert configuration_hash(a) != configuration_hash(b)
+
+    def test_enum_membership_changes_the_hash(self):
+        a = dict(BASE, fact_type="ENUM", allowed_enum_values=["A", "B"])
+        b = dict(BASE, fact_type="ENUM", allowed_enum_values=["A", "C"])
+        assert configuration_hash(a) != configuration_hash(b)
+
+    def test_source_identity_changes_the_hash(self):
+        changed = dict(BASE, source_urls=[*BASE["source_urls"][:-1], "https://other.example/3"])
+        assert configuration_hash(changed) != configuration_hash(BASE)
 
     def test_hash_is_0x_prefixed_keccak(self):
         h = configuration_hash(BASE)

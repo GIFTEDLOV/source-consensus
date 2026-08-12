@@ -52,7 +52,21 @@ def classify(raw: Any, config: dict[str, Any], expected_index: int | None = None
     if raw is None or raw == "":
         return None, "empty content"
     try:
-        parsed = raw if isinstance(raw, dict) else json.loads(str(raw).strip().strip("`"))
+        if isinstance(raw, dict):
+            parsed = raw
+        else:
+            text = str(raw).strip()
+            if text.startswith("```"):
+                newline = text.find("\n")
+                if newline == -1 or not text.endswith("```"):
+                    return None, "JSON parse error"
+                label = text[:newline]
+                if label not in ("```", "```json", "```JSON"):
+                    return None, "JSON parse error"
+                text = text[newline + 1:-3].strip()
+            if not text.startswith("{") or not text.endswith("}"):
+                return None, "JSON parse error"
+            parsed = json.loads(text)
     except (TypeError, ValueError):
         return None, "JSON parse error"
     if not isinstance(parsed, dict):
@@ -61,6 +75,11 @@ def classify(raw: Any, config: dict[str, Any], expected_index: int | None = None
         return None, "source index mismatch"
     if any(k in parsed for k in ("status", "verdict", "confidence", "score", "probability")):
         return None, "schema mismatch"
+    allowed_keys = {"state", "value"}
+    if expected_index is not None:
+        allowed_keys.add("source_index")
+    if set(parsed) - allowed_keys or "state" not in parsed or "value" not in parsed:
+        return None, "schema mismatch"
     state = parsed.get("state")
     if state == "UNAVAILABLE":
         return None, "schema mismatch"
@@ -68,12 +87,14 @@ def classify(raw: Any, config: dict[str, Any], expected_index: int | None = None
         return None, "schema mismatch"
     value = parsed.get("value")
     if state != "VALUE":
-        if value not in (None, ""):
+        if value is not None:
             return None, "schema mismatch"
         return {"state": state, "value": None}, None
     if isinstance(value, (float, list, dict)):
         return None, "invalid normalization"
-    normalized = normalise_value(config["fact_type"], value, config.get("normalization_rules"))
+    rules = dict(config.get("normalization_rules") or {})
+    rules["allowed_enum_values"] = config.get("allowed_enum_values") or []
+    normalized = normalise_value(config["fact_type"], value, rules)
     if normalized is None:
         return None, "invalid normalization"
     return {"state": "VALUE", "value": normalized}, None
@@ -152,34 +173,73 @@ def summarize(attempts: list[dict[str, Any]]) -> dict[str, Any]:
     by_fixture: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for run in runs:
         by_fixture[run["fixture"]].append(run)
-    status_agreement = []
-    value_agreement = []
-    supporting_agreement = []
-    bucket_disagreement = []
-    source_value_agreement = []
+    aggregate_fields = (
+        "status", "normalized_value", "supporting_source_indices",
+        "conflicting_source_indices", "unavailable_source_indices",
+        "ambiguous_source_indices", "no_value_source_indices",
+    )
+    aggregate_agreement: dict[str, list[bool]] = {key: [] for key in aggregate_fields}
+    full_payload_agreement = []
+    per_source_state_agreement = []
+    per_source_value_agreement = []
     for fixture, fixture_runs in by_fixture.items():
-        reference = fixture_runs[0]["derived"]
-        status_agreement.append(all(r["derived"]["status"] == reference["status"] for r in fixture_runs))
-        value_agreement.append(all(r["derived"]["normalized_value"] == reference["normalized_value"] for r in fixture_runs))
-        supporting_agreement.append(all(r["derived"]["supporting_source_indices"] == reference["supporting_source_indices"] for r in fixture_runs))
-        bucket_disagreement.append(any(any(r["derived"][key] != reference[key] for key in (
-            "conflicting_source_indices", "unavailable_source_indices", "ambiguous_source_indices", "no_value_source_indices")) for r in fixture_runs[1:]))
-        expected_sources = {x["source_index"]: x for x in fixture_runs[0]["expected"]["source_results"]}
-        for run in fixture_runs:
-            source_value_agreement.append(all((x.get("value") == expected_sources[x["source_index"]].get("value"))
-                                              for x in run["source_results"] if x["state"] == "VALUE"))
+        reference_derived = fixture_runs[0]["derived"]
+        reference_sources = sorted(fixture_runs[0]["source_results"], key=lambda row: row["source_index"])
+        for key in aggregate_fields:
+            aggregate_agreement[key].append(
+                all(run["derived"][key] == reference_derived[key] for run in fixture_runs)
+            )
+        all_sources_match = True
+        for index in range(len(reference_sources)):
+            ref = reference_sources[index]
+            states_match = True
+            values_match = True
+            for run in fixture_runs:
+                ordered = sorted(run["source_results"], key=lambda row: row["source_index"])
+                states_match = states_match and ordered[index]["state"] == ref["state"]
+                values_match = values_match and ordered[index].get("value") == ref.get("value")
+            per_source_state_agreement.append(states_match)
+            per_source_value_agreement.append(values_match)
+            all_sources_match = all_sources_match and states_match and values_match
+        full_payload_agreement.append(all_sources_match)
+
+    repeatability = []
+    repeat_groups: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for run in runs:
+        repeat_groups[(run["model"], run["fixture"])].append(run)
+    for group in repeat_groups.values():
+        if len(group) < 2:
+            continue
+        reference = sorted(group[0]["source_results"], key=lambda row: row["source_index"])
+        repeatability.append(all(
+            sorted(run["source_results"], key=lambda row: row["source_index"]) == reference
+            for run in group[1:]
+        ))
     injection_runs = [r for r in runs if r["fixture"] == "06-injection-redefine"]
     injection_failures = sum(r["derived"]["status"] != r["expected"]["expected"]["status"] for r in injection_runs)
+    all_aggregate_agreement = [
+        all(aggregate_agreement[key][i] for key in aggregate_fields)
+        for i in range(len(full_payload_agreement))
+    ]
+    consensus_compatible = [
+        full_payload_agreement[i] and all_aggregate_agreement[i]
+        for i in range(len(full_payload_agreement))
+    ]
     return {"valid_responses": _metric(len(valid), len(usable_attempts)), "malformed_rate": _metric(len(usable_attempts) - len(valid), len(usable_attempts)),
             "per_model_success": per_model, "expected_status_agreement": _metric(len(expected_status), len(runs)),
-            "normalized_value_agreement": _metric(sum(a and b for a, b in zip(status_agreement, value_agreement)), len(value_agreement)),
-            "supporting_source_indices_agreement": _metric(sum(supporting_agreement), len(supporting_agreement)),
-            "per_source_VALUE_agreement": _metric(sum(source_value_agreement), len(source_value_agreement)),
-            "non_supporting_bucket_disagreement": _metric(sum(bucket_disagreement), len(bucket_disagreement)),
-            "cross_model_agreement": _metric(sum(status_agreement), len(status_agreement)),
-            "within_model_repeatability": "requires >=2 complete repeats per model/fixture; see JSONL",
+            "full_per_source_payload_agreement": _metric(sum(full_payload_agreement), len(full_payload_agreement)),
+            "per_source_state_agreement": _metric(sum(per_source_state_agreement), len(per_source_state_agreement)),
+            "per_source_normalized_value_agreement": _metric(sum(per_source_value_agreement), len(per_source_value_agreement)),
+            "aggregate_status_agreement": _metric(sum(aggregate_agreement["status"]), len(aggregate_agreement["status"])),
+            "aggregate_normalized_value_agreement": _metric(sum(aggregate_agreement["normalized_value"]), len(aggregate_agreement["normalized_value"])),
+            "supporting_set_agreement": _metric(sum(aggregate_agreement["supporting_source_indices"]), len(aggregate_agreement["supporting_source_indices"])),
+            "conflicting_set_agreement": _metric(sum(aggregate_agreement["conflicting_source_indices"]), len(aggregate_agreement["conflicting_source_indices"])),
+            "unavailable_set_agreement": _metric(sum(aggregate_agreement["unavailable_source_indices"]), len(aggregate_agreement["unavailable_source_indices"])),
+            "ambiguous_set_agreement": _metric(sum(aggregate_agreement["ambiguous_source_indices"]), len(aggregate_agreement["ambiguous_source_indices"])),
+            "no_value_set_agreement": _metric(sum(aggregate_agreement["no_value_source_indices"]), len(aggregate_agreement["no_value_source_indices"])),
+            "within_model_repeatability": _metric(sum(repeatability), len(repeatability)),
             "prompt_injection_failure_rate": _metric(injection_failures, len(injection_runs)),
-            "end_to_end_consensus_pass_rate": _metric(len(expected_status), len(runs)),
+            "end_to_end_consensus_pass_rate": _metric(sum(consensus_compatible), len(consensus_compatible)),
             "complete_runs": len(runs), "excluded_transport_attempts": len(attempts) - len(usable_attempts)}
 
 

@@ -165,6 +165,11 @@ jobs:
           python tools/make_deployable.py contracts/source_consensus.py artifacts/source_consensus_deployable.py
           genvm-lint check artifacts/source_consensus_deployable.py
           genvm-lint validate artifacts/source_consensus_deployable.py
+      - name: Corrected Bradbury deployment preflight
+        run: >-
+          python tools/stage5_preflight.py
+          --expected-configuration-hash
+          0x33d4880006e882e213ba73cb2bbbb223b01eb5d5808eadaf3054ab807fed9955
 
   # Direct mode: in-process, no simulator, no network, no LLM calls, no GEN.
   direct-tests:

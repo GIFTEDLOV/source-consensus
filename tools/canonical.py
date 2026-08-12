@@ -34,7 +34,7 @@ import sys
 import unicodedata
 from typing import Any, Iterable, Mapping, Sequence
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 # --------------------------------------------------------------------------------------------
 # Vocabulary
@@ -104,7 +104,7 @@ def canonical_json(payload: Any) -> str:
 
 
 def _is_real_date(y: int, m: int, d: int) -> bool:
-    if not 1 <= m <= 12 or d < 1:
+    if y < 1 or not 1 <= m <= 12 or d < 1:
         return False
     limit = _DAYS[m - 1]
     if m == 2 and (y % 4 == 0 and (y % 100 != 0 or y % 400 == 0)):
@@ -123,14 +123,21 @@ def normalise_value(fact_type: str, raw: Any, rules: Mapping[str, Any] | None = 
     rules = dict(rules or {})
     if raw is None:
         return None
-    if isinstance(raw, bool):  # bool is an int subclass; catch it before INTEGER
-        text = "true" if raw else "false"
-    elif isinstance(raw, int):
+    if fact_type == FACT_INTEGER:
+        if isinstance(raw, bool) or not isinstance(raw, (int, str)):
+            return None
         text = str(raw)
-    elif isinstance(raw, str):
-        text = raw
+    elif fact_type == FACT_BOOLEAN:
+        if isinstance(raw, bool):
+            text = "true" if raw else "false"
+        elif isinstance(raw, str):
+            text = raw
+        else:
+            return None
     else:
-        return None
+        if not isinstance(raw, str):
+            return None
+        text = raw
 
     text = normalise_text(text)
     if not text:
@@ -359,6 +366,7 @@ def canonical_record(
         "conflicting_source_indices": sorted(derivation["conflicting_source_indices"]),
         "unavailable_source_indices": sorted(derivation["unavailable_source_indices"]),
         "ambiguous_source_indices": sorted(derivation["ambiguous_source_indices"]),
+        "no_value_source_indices": sorted(derivation["no_value_source_indices"]),
         "resolved_at": int(resolved_at),
     }
     return canonical_json(payload)

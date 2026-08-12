@@ -97,7 +97,7 @@ contract is LF-only; `stage-guard` now demands direct tests, which Stage 3 suppl
 - Construction: every bound violation reverts with a distinct message; 1 source reverts; 6 sources
   revert; `minimum_supporting_sources` > source count reverts; `ENUM` without values reverts.
 - The nine fixture cases end to end with mocked web and LLM responses, asserting exact status, value,
-  and all four index sets.
+  and all five index sets.
 - Terminality: a second `resolve` after `CONFIRMED` / `CONFLICTED` / `INSUFFICIENT_EVIDENCE` reverts;
   **a retry after `UNAVAILABLE` is permitted** (§10.1) and cannot overwrite a terminal status under
   any ordering.
@@ -119,19 +119,21 @@ contract is LF-only; `stage-guard` now demands direct tests, which Stage 3 suppl
 **3d — Mutation testing**
 
 Breaking each load-bearing behaviour in turn and re-running: the four derivation precedence rules,
-the tie-break, normalisation rejection, index-set construction, the prompt fences, and the T1
-comparator. A mutation that survives is a hole and fails the build. **A mutation counts as caught
+the tie-break, normalisation rejection, index-set construction, prompt fences, full-source
+comparator, leader self-derivation, and post-consensus storage boundary. A mutation that survives is
+a hole and fails the build. **A mutation counts as caught
 only when named tests fail**, never when the process merely exits non-zero.
 
 **3e — Convergence measurement**
 
-The open question from `ARCHITECTURE.md` §11: does the T1 rule converge across real models? An
+The open question from `ARCHITECTURE.md` §11: does exact full-source binding converge across real
+models? An
 opt-in, no-chain harness runs the contract's own prompt and comparator against several models via a
 provider key, over the nine fixtures. **Decision thresholds are recorded before the run**, so the
 outcome cannot be fitted to the data afterwards.
 
-If `supporting_source_indices` diverges across models even where the status agrees, T1 is wrong and
-must be revised before any convergence claim is made.
+Any per-source state/value divergence means the corrected comparator rejects, even where status
+agrees. The harness reports that liveness cost rather than redefining it away.
 
 **Exit criteria:** every architecture invariant has at least one test that fails if the invariant is
 removed; suite green in CI on Python 3.12; no test asserts on prose; all mutations caught; the
@@ -145,7 +147,7 @@ convergence run either executed and reported, or explicitly marked not-run with 
   how to choose sources that converge, computing `configuration_hash` off-chain, pinning it in a
   consuming contract, every public method, canonical record verification, schema versioning, error
   handling, terminal semantics, safe patterns and anti-patterns, limitations.
-- `docs/CONSENSUS-NOTES.md` — the deterministic-derivation argument and the tiered comparator,
+- `docs/CONSENSUS-NOTES.md` — the deterministic-derivation argument and full-payload comparator,
   written to be lifted by other builders. This is the transferable idea.
 - **Two working, tested integration examples** (required modification 6 in `OVERLAP-RESEARCH.md` §6):
   a consuming contract that pins `configuration_hash` and branches on all four statuses, and an
@@ -157,7 +159,7 @@ result using the README alone.
 
 ---
 
-## Stage 5 — Bradbury deployment and one live resolution *(COMPLETE)*
+## Stage 5 — Bradbury deployment and one live resolution *(SUPERSEDED)*
 
 - `docs/DEPLOYMENT.md` written **before** any transaction is signed: network, RPC, chain ID, source
   hash, constructor fields, expected `configuration_hash`, deployment command, verification
@@ -166,7 +168,7 @@ result using the README alone.
 - Run exactly one live `resolve()`.
 - Verify: consensus `FINALIZED`; execution `FINISHED_WITH_RETURN`; on-chain source matches the
   audited source; `configuration_hash()` equals the value computed off-chain **before** deployment;
-  the record re-derives independently; all four index sets are present and consistent.
+  the record re-derives independently; all five index sets are present and consistent.
 - `docs/PROVENANCE.md` updated with network, chain ID, addresses, transaction hashes, validator
   votes, expected and observed hashes, and the live result.
 
@@ -189,6 +191,22 @@ Read-only finality closure later returned `FINALIZED` / status code `7` for both
 `gen_getContractState(status: finalized)` returned the deployed state, and the finalized reads
 reproduced the expected configuration hash, `CONFIRMED` status, and `2026-03-11` value. No
 additional transaction was submitted.
+
+Steward review subsequently found that schema version 1 did not bind every source entry consumed by
+final derivation. The successful attempt-4 deployment and `v1.0.0-bradbury` remain immutable
+historical evidence but are `SUPERSEDED_AFTER_STEWARD_CONSENSUS_BINDING_REVIEW`.
+
+## Stage 6 — steward remediation and corrected Bradbury proof *(IN PROGRESS)*
+
+- bump schema/consensus identity to version 2;
+- bind exactly N canonical states and values plus every aggregate field;
+- require leader self-derivation, independent full extraction, and post-consensus re-derivation;
+- run complete contract/docs/interface/runtime/CI audit and 28-case steward regression matrix;
+- kill the historical mutations plus 14 new consensus-boundary mutants;
+- generate and prove exact source/deployable bytes;
+- deploy a new instance, wait for `FINALIZED`, resolve once, wait for `FINALIZED`, and re-derive the
+  stored result from all bound source records;
+- publish a new tag without moving `v1.0.0-bradbury`.
 
 ---
 

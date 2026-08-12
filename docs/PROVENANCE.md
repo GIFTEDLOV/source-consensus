@@ -1,5 +1,12 @@
 # Provenance
 
+> **Historical release status:** the successful deployment below, commit
+> `89af051b9091dbff2eede243fea9afa5636c38b2`, and tag `v1.0.0-bradbury` are preserved exactly as
+> rejected-release evidence. They are
+> `SUPERSEDED_AFTER_STEWARD_CONSENSUS_BINDING_REVIEW`. The deployment finalized and executed as
+> recorded, but its schema-version-1 comparator did not bind every source entry later consumed by
+> final derivation. Nothing below should be cited as the current secure release.
+
 SourceConsensus was implemented clean-room from `docs/ARCHITECTURE.md`, `docs/DERIVATION.md`, and
 the pinned evidence fixtures. The contract contains no copied code, prompt text, storage layout, or
 comparator logic from the overlap projects disclosed in `docs/OVERLAP-RESEARCH.md`.

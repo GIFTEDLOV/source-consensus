@@ -145,7 +145,7 @@ ordering is pinned:
 | Quantity | Rule |
 | --- | --- |
 | `leader` when two values tie on support | **most support first, then lexicographic on the normalised value.** Never insertion order, never dict iteration order. |
-| All four index sets | ascending integer sort |
+| All five index sets | ascending integer sort |
 | `contenders` membership | `>=`, not `>` |
 | Value comparison | exact string equality **after** normalisation (`ARCHITECTURE.md` §6) |
 
@@ -171,21 +171,25 @@ configured sources agreeing with it.
 
 ## 7. Consensus scope
 
-`ARCHITECTURE.md` §11 defines what validators compare. Restated against this table:
+Schema version 2 has one consensus tier. Validators bind every per-source state and normalized value
+at its immutable configured index. Before any independent fetch, a validator validates the leader
+arrays, canonical value representation, and exact source count, then re-runs this document's
+derivation over the leader payload. The derived result must exactly match all advertised aggregate
+fields:
 
-| Tier | Fields | Rule |
-| --- | --- | --- |
-| **T1 strict** | `status`, `normalized_value`, `supporting_source_indices`, and the `(state, value)` of every source in `supporting` | exact equality |
-| **T2 recorded** | which of `no_value` / `unavailable` / `ambiguous` each remaining source fell into | **not compared** |
-| **T3 free** | anything else the model emitted | never compared, never stored |
+- `status`;
+- `normalized_value`;
+- `supporting_source_indices`;
+- `conflicting_source_indices`;
+- `unavailable_source_indices`;
+- `ambiguous_source_indices`;
+- `no_value_source_indices`.
 
-T2 is deliberately outside consensus: two honest validators can differ on whether a vague page is
-`AMBIGUOUS` or `NO_VALUE`, or whether a flaky host is `UNAVAILABLE` or merely slow, **without
-disagreeing about the answer**. Neither state supports a value, so no T2 disagreement can move a row
-in §3.
+The validator then independently extracts every source, compares every `(state, value)` pair by
+index, independently derives the aggregate, and compares every field above. Post-consensus storage
+validates the full payload again and derives from its states and values instead of trusting the
+leader's aggregate.
 
-**The consequence, stated plainly: the T2 buckets in the stored record are the leader's partition.**
-They are informative, not consensus-backed. Tests
-`TestNonSupportingBucketsAreNotConsensusCritical` pin the behaviour, and
-`STAGE3_RISK_T2_BUCKETS` in the contract marks it for the convergence harness — a green Direct Mode
-suite proves the *rule* holds, not that real models agree often enough for it to be comfortable.
+This replaces the rejected schema-version-1 rule that left non-supporting buckets outside the
+comparator even though final derivation consumed them. No decision-relevant or public diagnostic
+field remains outside validator consensus.

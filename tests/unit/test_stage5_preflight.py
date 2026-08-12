@@ -10,7 +10,7 @@ from tools.stage5_preflight import validate
 ROOT = Path(__file__).resolve().parents[2]
 CANONICAL = ROOT / "contracts" / "source_consensus.py"
 CONFIG = json.loads((ROOT / "examples/stage5-date-config.json").read_text(encoding="utf-8"))
-EXPECTED_HASH = "0x14000a8af1488048755b93a32a7fa31ded90897e62d28aad875dc9a087d427cc"
+EXPECTED_HASH = "0x33d4880006e882e213ba73cb2bbbb223b01eb5d5808eadaf3054ab807fed9955"
 
 
 def test_stage5_preflight_round_trips_all_constructor_types(tmp_path):

@@ -175,7 +175,8 @@ class TestCanonicalRecord:
         assert set(rec) == {
             "v", "configuration_hash", "query_id", "fact_type", "status", "normalized_value",
             "supporting_source_indices", "conflicting_source_indices",
-            "unavailable_source_indices", "ambiguous_source_indices", "resolved_at",
+            "unavailable_source_indices", "ambiguous_source_indices", "no_value_source_indices",
+            "resolved_at",
         }
 
     def test_record_excludes_prose_and_identity(self, deploy, sources_available, llm_per_source):
@@ -200,15 +201,43 @@ class TestCanonicalRecord:
         sc.resolve()
         assert sc.get_record() == sc.get_record() == sc.get_result()["record"]
 
-    def test_record_omits_no_value_indices_by_design(self, deploy, sources_available,
-                                                     llm_per_source):
-        """`no_value` is derivable from the other three plus the source count, so it is not
-        stored -- the record carries the minimum that reproduces the decision."""
+    def test_record_includes_the_consensus_bound_no_value_indices(
+        self, deploy, sources_available, llm_per_source
+    ):
         import json
 
         sc = deploy(n_sources=3)
         sources_available(n=3)
         llm_per_source([value("2026-03-11"), value("2026-03-11"), NO_VALUE])
         sc.resolve()
-        assert "no_value_source_indices" not in json.loads(sc.get_record())
-        assert sc.get_result()["no_value_source_indices"] == [2], "still readable from get_result"
+        assert json.loads(sc.get_record())["no_value_source_indices"] == [2]
+        assert sc.get_result()["no_value_source_indices"] == [2]
+
+
+class TestTransactionTimestamp:
+    def test_timezone_offset_and_fraction_are_converted_without_float_rounding(
+        self, deploy, direct_vm, sources_available, llm_per_source
+    ):
+        direct_vm.warp("2026-03-11T12:34:56.999999+02:00")
+        sc = deploy(n_sources=2)
+        sources_available(n=2)
+        llm_per_source([value("2026-03-11")] * 2)
+        result = sc.resolve()
+        # 2026-03-11 10:34:56 UTC, with fractional seconds deliberately floored.
+        assert result["resolved_at"] == 1773225296
+
+    @pytest.mark.parametrize("bad", [
+        "2026-03-11T12:34:56",
+        "not-a-date",
+        "1969-12-31T23:59:59Z",
+    ])
+    def test_invalid_or_nondeterministic_transaction_time_fails_closed(
+        self, deploy, direct_vm, sources_available, llm_per_source, bad
+    ):
+        direct_vm.warp(bad)
+        sc = deploy(n_sources=2)
+        sources_available(n=2)
+        llm_per_source([value("2026-03-11")] * 2)
+        with pytest.raises(Exception):
+            sc.resolve()
+        assert sc.is_resolved() is False

@@ -35,8 +35,8 @@ def response_for(result: dict) -> str:
     if state == "UNAVAILABLE":
         # Never produced by the model -- the contract determines it from a failed fetch. The web
         # mock returns 404 for these, so this response is never reached.
-        return json.dumps({"state": "NO_VALUE"})
-    return json.dumps({"state": state})
+        return json.dumps({"state": "NO_VALUE", "value": None})
+    return json.dumps({"state": state, "value": None})
 
 
 @pytest.mark.parametrize("path", CASES, ids=[p.stem for p in CASES])
