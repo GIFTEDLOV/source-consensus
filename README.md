@@ -11,11 +11,12 @@ list, search, parties, escrow, payout, or value-transfer logic.
 > contract later derived storage from every leader-provided source entry. That deployment is
 > `SUPERSEDED_AFTER_STEWARD_CONSENSUS_BINDING_REVIEW` and must not be resubmitted as secure.
 >
-> The corrected schema version 2 binds every per-source state and normalized value, verifies the
-> leader aggregate by deterministic re-derivation, independently reproduces the full extraction,
-> and re-derives storage from the same validated payload. A new Bradbury address and corrected tag
-> will be published only after the exact-head security, CI, artifact, finality, and live-proof gates
-> in [`docs/RESUBMISSION.md`](docs/RESUBMISSION.md) pass.
+> Corrected release `v1.0.1-bradbury` binds every per-source state and normalized value, verifies
+> the leader aggregate by deterministic re-derivation, independently reproduces the full
+> extraction, and re-derives storage from the same validated payload. Its new Bradbury contract is
+> [`0x2084107B5274FB82FDE29Bbe4794517309AdE2b9`](https://explorer-bradbury.genlayer.com/contract/0x2084107B5274FB82FDE29Bbe4794517309AdE2b9),
+> deployed and resolved to finality from exact-head CI run
+> [31593257570](https://github.com/GIFTEDLOV/source-consensus/actions/runs/31593257570).
 
 ## Contract model
 

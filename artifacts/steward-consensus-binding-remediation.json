@@ -1,0 +1,132 @@
+{
+  "artifact_version": 1,
+  "rejection": "The contract's final result is not fully protected by validator consensus. The validator checks only the supporting sources, but the contract later recalculates the stored status from every leader-provided source result, so unchecked entries can change a confirmed result into a conflict. Please have validators bind all per-source states and values used by the final derivation, or recompute from a fully verified payload, then resubmit matching source and deployment.",
+  "historical_release": {
+    "status": "SUPERSEDED_AFTER_STEWARD_CONSENSUS_BINDING_REVIEW",
+    "tag": "v1.0.0-bradbury",
+    "commit": "89af051b9091dbff2eede243fea9afa5636c38b2",
+    "contract_address": "0x8cf322A235AB2C3F15732DF39e5F6177af3E0626",
+    "deployment_transaction": "0xcbd90283f8f7a62d3b039d878473845a0136187307afc12e4d29b8d25879ed31",
+    "resolve_transaction": "0x278a67c29f2c109f41cee1bee3604d2adee8c047e13d4dc46e2c65e213460733",
+    "configuration_hash": "0x14000a8af1488048755b93a32a7fa31ded90897e62d28aad875dc9a087d427cc",
+    "schema_version": 1,
+    "defect": "Validators compared aggregate and supporting-source details only, while post-consensus storage derivation consumed every leader-provided source state and value."
+  },
+  "exploit": {
+    "minimum_supporting_sources": 3,
+    "conflict_threshold": 2,
+    "honest_states": ["VALUE", "VALUE", "VALUE", "NO_VALUE", "NO_VALUE"],
+    "honest_values": ["A", "A", "A", null, null],
+    "honest_derivation": "CONFIRMED",
+    "malicious_states": ["VALUE", "VALUE", "VALUE", "VALUE", "VALUE"],
+    "malicious_values": ["A", "A", "A", "B", "B"],
+    "malicious_derivation": "CONFLICTED",
+    "old_comparator_could_accept_claimed_status": "CONFIRMED"
+  },
+  "remediation": {
+    "source_commit": "f818e9c6dc16f72e01a25baa2d8acdc750bfe16e",
+    "schema_version": 2,
+    "configuration_hash": "0x33d4880006e882e213ba73cb2bbbb223b01eb5d5808eadaf3054ab807fed9955",
+    "rule": "Validators schema-check, normalize, and bind every ordered per-source state/value; re-derive every leader aggregate; independently reproduce every source; compare the complete payload; and storage re-derives from those bound pairs.",
+    "steward_regressions": 28,
+    "historical_mutants": 12,
+    "new_mutants": 14,
+    "total_mutants": 26,
+    "mutation_survivors": 0,
+    "tests_passed": 441,
+    "exhaustive_derivations": 70800
+  },
+  "source_artifact": {
+    "canonical_path": "contracts/source_consensus.py",
+    "canonical_bytes": 60586,
+    "canonical_sha256": "9cc2fa9d7d8ae97d3e10ba865bd7426bae6eeac98d226dbe0ca8b6bab8f9bb65",
+    "deployable_path": "artifacts/source_consensus_deployable.py",
+    "deployable_bytes": 51585,
+    "deployable_sha256": "e0a732644683c8af6c15cdd781ef85c98eacddcb0febbec5df1fd6d1209796b9",
+    "deployed_bytes": 51585,
+    "deployed_sha256": "e0a732644683c8af6c15cdd781ef85c98eacddcb0febbec5df1fd6d1209796b9",
+    "depends_header": "# { \"Depends\": \"py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6\" }",
+    "ast_parity": true,
+    "exact_deployed_artifact_match": true
+  },
+  "ci": {
+    "run_id": 31593257570,
+    "head_sha": "f818e9c6dc16f72e01a25baa2d8acdc750bfe16e",
+    "conclusion": "success",
+    "url": "https://github.com/GIFTEDLOV/source-consensus/actions/runs/31593257570"
+  },
+  "deployment": {
+    "network": "Genlayer Bradbury Testnet",
+    "chain_id": 4221,
+    "rpc": "https://rpc-bradbury.genlayer.com",
+    "sender": "0xe0f17bef0587c3b66d2eb4bbe705dff821abdde7",
+    "transaction": "0x6404c2364b5ba936ea891febb89a9365930cdbe3d77a97b31871b8e0bd7a745b",
+    "execution_hash": "0x33296ed25dd4543c286822d736e75d8fd837ee3317bb8a9585f1248ecb02f262",
+    "contract_address": "0x2084107B5274FB82FDE29Bbe4794517309AdE2b9",
+    "status": "FINALIZED",
+    "consensus": "AGREE",
+    "execution": "FINISHED_WITH_RETURN",
+    "appeal_round": 0,
+    "rotations": 0,
+    "votes": ["AGREE", "AGREE", "AGREE", "AGREE", "AGREE"],
+    "created_at_utc": "2026-08-12T11:56:24Z",
+    "last_vote_at_utc": "2026-08-12T11:56:38Z",
+    "proposal_block": 17281621,
+    "finalized_observed_at_utc": "2026-08-12T12:26:42Z"
+  },
+  "live_resolution": {
+    "transaction": "0x678630dbae18b324cfdf46df25230e68ec8b28067e05373cdc463d2247c182c8",
+    "execution_hash": "0x9e0080e4b42216d06b86315ec2ce36e55aa72a1ebb4effeb98b6e09f1f13523d",
+    "status": "FINALIZED",
+    "consensus": "AGREE",
+    "execution": "FINISHED_WITH_RETURN",
+    "appeal_round": 0,
+    "rotations": 0,
+    "validators_committed": 5,
+    "validators_revealed": 5,
+    "votes": ["AGREE", "AGREE", "TIMEOUT", "TIMEOUT", "AGREE"],
+    "created_at_utc": "2026-08-12T12:30:33Z",
+    "last_vote_at_utc": "2026-08-12T12:37:20Z",
+    "proposal_block": 17283786,
+    "finalized_observed_at_utc": "2026-08-12T13:07:23Z",
+    "finality_observation_block": 17286509,
+    "finality_observation_block_time_utc": "2026-08-12T13:10:35Z",
+    "final_status": "CONFIRMED",
+    "final_value": "2026-03-11"
+  },
+  "full_source_payload": [
+    {
+      "index": 0,
+      "state": "VALUE",
+      "normalized_value": "2026-03-11",
+      "url": "https://raw.githubusercontent.com/GIFTEDLOV/source-consensus/7e58293b4b55fcf57dfc5e24d0d8a9f02e6c2d23/fixtures/corpus/01-all-agree/source-0-release-page.md",
+      "sha256": "32c795eb56f720b214d67313d3dc1a10ace0d42686b08cc57c141e38bfd30ddf"
+    },
+    {
+      "index": 1,
+      "state": "VALUE",
+      "normalized_value": "2026-03-11",
+      "url": "https://raw.githubusercontent.com/GIFTEDLOV/source-consensus/7e58293b4b55fcf57dfc5e24d0d8a9f02e6c2d23/fixtures/corpus/01-all-agree/source-1-changelog.md",
+      "sha256": "8bc4de1b9fa70b1940a9fdaceb68265677c96117d160690629086c76135bdd05"
+    },
+    {
+      "index": 2,
+      "state": "VALUE",
+      "normalized_value": "2026-03-11",
+      "url": "https://raw.githubusercontent.com/GIFTEDLOV/source-consensus/7e58293b4b55fcf57dfc5e24d0d8a9f02e6c2d23/fixtures/corpus/01-all-agree/source-2-docs-announcement.md",
+      "sha256": "9bdc58c09d909c0f9476a35bc4e864f37182df22a0a5041b6f5a43196b3253b1"
+    }
+  ],
+  "independent_derivation": {
+    "status": "CONFIRMED",
+    "normalized_value": "2026-03-11",
+    "supporting_source_indices": [0, 1, 2],
+    "conflicting_source_indices": [],
+    "unavailable_source_indices": [],
+    "ambiguous_source_indices": [],
+    "no_value_source_indices": [],
+    "resolved_at": 1786537833,
+    "canonical_record_exact_match": true,
+    "stored_result_exact_match": true
+  }
+}

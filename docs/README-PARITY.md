@@ -21,7 +21,7 @@ Reviewed against `contracts/source_consensus.py` schema version 2 on 2026-08-12.
 | configuration hash commits consensus semantics | MATCHES CODE | schema v2 plus per-field hash-change/reference tests |
 | v1 deployment is current secure release | HISTORICAL ONLY | explicitly superseded after steward rejection |
 | real-provider convergence measured | STALE claim removed | provider run remains NOT RUN without a key |
-| current corrected Bradbury address/tag/CI | UNDERDOCUMENTED until live gate | README must be updated only after finalized proof |
+| current corrected Bradbury address/tag/CI | MATCHES LIVE RELEASE | README links the finalized schema-v2 address, corrected tag, and exact-head green CI |
 
-Final parity verdict before broadcast: current behavior/security claims match code; live release
-claims remain intentionally absent until they are proven.
+Final parity verdict: all current behavior/security and live-release claims match corrected code and
+the finalized Bradbury evidence.

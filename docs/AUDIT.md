@@ -18,9 +18,9 @@ all current documentation.
 | Low | canonical record omitted the consensus-bound no-value set | schema-v2 record includes all five sets |
 | Documentation | current T2 claims contradicted the required security boundary; record-alone re-derivation was overstated | README/architecture/derivation/consensus/convergence/integration/CI/build/release docs corrected |
 
-No unresolved HIGH or CRITICAL code issue remains at the local-audit stage. Deployment, live
-validator behavior, exact deployed-byte equality, CI exact-head status, and release evidence remain
-gates rather than assumptions until recorded in this file and `RESUBMISSION.md`.
+No unresolved HIGH or CRITICAL issue remains. Exact-head CI, deployment and resolution finality,
+live validator behavior, deployed-byte equality, and off-chain record derivation all passed and are
+recorded in `RESUBMISSION.md` and the remediation JSON artifact.
 
 The untouched rejected-release baseline passed 367 tests. The corrected suite passes 441 tests,
 including R01–R28 and exhaustive 70,800-case derivation parity. All 26 executable mutants are killed:
@@ -41,4 +41,5 @@ including R01–R28 and exhaustive 70,800-case derivation parity. All 26 executa
 - lifecycle/time: UNAVAILABLE-only retry, terminal replay guard, attempts/source detail, integer
   transaction timestamp — PASS;
 - public interface: 9 methods, 8 view and 1 write, no accidental helper exposure — PASS;
-- provenance/deployment: historical v1 preserved and superseded; corrected live proof — PENDING.
+- provenance/deployment: historical v1 preserved/superseded; corrected source, finalized deployment,
+  finalized live resolution, votes, complete payload, and byte equality recorded — PASS.

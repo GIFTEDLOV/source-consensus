@@ -7,6 +7,16 @@
 > recorded, but its schema-version-1 comparator did not bind every source entry later consumed by
 > final derivation. Nothing below should be cited as the current secure release.
 
+The corrected schema-v2 deployment source is commit
+`f818e9c6dc16f72e01a25baa2d8acdc750bfe16e`, with canonical SHA-256
+`9cc2fa9d7d8ae97d3e10ba865bd7426bae6eeac98d226dbe0ca8b6bab8f9bb65` and deployable/deployed
+SHA-256 `e0a732644683c8af6c15cdd781ef85c98eacddcb0febbec5df1fd6d1209796b9`.
+The new finalized contract is `0x2084107B5274FB82FDE29Bbe4794517309AdE2b9`; deployment transaction
+`0x6404c2364b5ba936ea891febb89a9365930cdbe3d77a97b31871b8e0bd7a745b`; finalized resolve
+`0x678630dbae18b324cfdf46df25230e68ec8b28067e05373cdc463d2247c182c8`; final result
+`CONFIRMED/2026-03-11`. Full machine-readable evidence is in
+`artifacts/steward-consensus-binding-remediation.json`.
+
 SourceConsensus was implemented clean-room from `docs/ARCHITECTURE.md`, `docs/DERIVATION.md`, and
 the pinned evidence fixtures. The contract contains no copied code, prompt text, storage layout, or
 comparator logic from the overlap projects disclosed in `docs/OVERLAP-RESEARCH.md`.

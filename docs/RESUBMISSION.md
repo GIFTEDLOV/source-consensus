@@ -48,17 +48,33 @@ schema version 1 even when the bounded fact and source URLs are unchanged.
 
 ## Corrected source, deployment, and live proof
 
-This section must contain no placeholders when tagged:
+The corrected deployment source commit is
+`f818e9c6dc16f72e01a25baa2d8acdc750bfe16e`; the evidence-only release commit is tagged
+`v1.0.1-bradbury` after this document is committed. Canonical source is 60,586 bytes,
+SHA-256 `9cc2fa9d7d8ae97d3e10ba865bd7426bae6eeac98d226dbe0ca8b6bab8f9bb65`.
+The reproducibly generated and actually submitted deployable is 51,585 bytes, SHA-256
+`e0a732644683c8af6c15cdd781ef85c98eacddcb0febbec5df1fd6d1209796b9`. Bradbury's
+`gen_getContractCode` returned exactly those bytes after finality.
 
-- remediation commit: PENDING;
-- corrected tag: PENDING;
-- canonical source SHA-256 / bytes: PENDING;
-- deployable SHA-256 / bytes: PENDING;
-- configuration hash: PENDING;
-- CI run: PENDING;
-- Bradbury deployment transaction / new address / finalized evidence: PENDING;
-- corrected resolve transaction / votes / finalized evidence: PENDING;
-- complete stored source payload and independent derivation: PENDING.
+Exact-head CI run [31593257570](https://github.com/GIFTEDLOV/source-consensus/actions/runs/31593257570)
+passed all jobs. Schema-v2 configuration hash is
+`0x33d4880006e882e213ba73cb2bbbb223b01eb5d5808eadaf3054ab807fed9955`.
+
+- network/chain: Genlayer Bradbury Testnet / `4221`;
+- sender: `0xe0f17bef0587c3b66d2eb4bbe705dff821abdde7`;
+- finalized deployment: `0x6404c2364b5ba936ea891febb89a9365930cdbe3d77a97b31871b8e0bd7a745b`;
+- new contract: [`0x2084107B5274FB82FDE29Bbe4794517309AdE2b9`](https://explorer-bradbury.genlayer.com/contract/0x2084107B5274FB82FDE29Bbe4794517309AdE2b9);
+- deployment consensus: round 0, 5/5 `AGREE`, no rotations, `FINISHED_WITH_RETURN`;
+- finalized resolution: `0x678630dbae18b324cfdf46df25230e68ec8b28067e05373cdc463d2247c182c8`;
+- resolution consensus: round 0, votes `AGREE, AGREE, TIMEOUT, TIMEOUT, AGREE`, no rotations,
+  `FINISHED_WITH_RETURN`;
+- final result: `CONFIRMED` / `2026-03-11`.
+
+The finalized complete source payload is index 0 `VALUE/2026-03-11`, index 1
+`VALUE/2026-03-11`, and index 2 `VALUE/2026-03-11`. The independent reference derives supporting
+`[0,1,2]`, all other index sets empty, and `CONFIRMED/2026-03-11`; its canonical record is exactly
+equal to `get_record()`. The machine-readable before/after, votes, hashes, full payload, and equality
+proof are in `artifacts/steward-consensus-binding-remediation.json`.
 
 The source submitted for review will be the exact commit connected by the reproducibility evidence
 to the exact bytes returned by Bradbury for the new address. The old address will not be reused.

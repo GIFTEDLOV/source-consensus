@@ -3,8 +3,11 @@
 `v1.0.0-bradbury` is immutable historical evidence and
 `SUPERSEDED_AFTER_STEWARD_CONSENSUS_BINDING_REVIEW`. Never move, delete, or reuse it.
 
-The corrected release candidate is schema version 2. A new tag (expected
-`v1.0.1-bradbury`) may be created only after:
+The corrected release is schema version 2 and tag `v1.0.1-bradbury`. Its deployment source commit is
+`f818e9c6dc16f72e01a25baa2d8acdc750bfe16e`; the evidence commit carrying this checklist is tagged
+after every item below passes. Current contract: `0x2084107B5274FB82FDE29Bbe4794517309AdE2b9`.
+
+Completed gates:
 
 - the 28-case steward matrix and all historical/new mutations pass;
 - full tests, fixtures, reference parity, exhaustive derivation, convergence-offline, deployment
@@ -17,4 +20,4 @@ The corrected release candidate is schema version 2. A new tag (expected
 - provenance, remediation JSON, README, deployment docs, and `RESUBMISSION.md` contain the final
   address, transactions, votes, hashes, finality, and tag.
 
-Do not tag a commit that contains placeholders or unverified live evidence.
+No placeholder or unverified live-evidence field remains.

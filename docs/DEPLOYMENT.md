@@ -35,6 +35,26 @@ The successful historical native script is the transport pattern. A corrected sc
 filename and expected schema-v2 configuration hash; `deploy/04_stage5_attempt4.js` remains frozen as
 historical v1 evidence.
 
+## Steward-remediated deployment and resolution
+
+Exact-head commit `f818e9c6dc16f72e01a25baa2d8acdc750bfe16e` passed CI run `31593257570`.
+To prevent the installed CLI from executing every historical file in `deploy/`, only the corrected
+script, `package.json`, and exact deployable were copied to an isolated temporary staging directory.
+The old script was neither edited nor replayed.
+
+- deployable: 51,585 bytes; SHA-256 `e0a732644683c8af6c15cdd781ef85c98eacddcb0febbec5df1fd6d1209796b9`;
+- deployment transaction/address: `0x6404c2364b5ba936ea891febb89a9365930cdbe3d77a97b31871b8e0bd7a745b` /
+  `0x2084107B5274FB82FDE29Bbe4794517309AdE2b9`;
+- deployment: `FINALIZED`, round 0, 5/5 `AGREE`, no rotations, `FINISHED_WITH_RETURN`;
+- deployed bytes: exact 51,585-byte/SHA-256 match;
+- configuration hash: `0x33d4880006e882e213ba73cb2bbbb223b01eb5d5808eadaf3054ab807fed9955`;
+- single resolve: `0x678630dbae18b324cfdf46df25230e68ec8b28067e05373cdc463d2247c182c8`;
+- resolution: `FINALIZED`, round 0, 3 `AGREE`, 2 `TIMEOUT`, no rotations,
+  `FINISHED_WITH_RETURN`; final `CONFIRMED / 2026-03-11`.
+
+Every finalized source was `VALUE/2026-03-11`. Independent schema-v2 derivation reproduced
+supporting `[0,1,2]`, all other sets empty, and the exact canonical record stored on chain.
+
 ## Attempt Record
 
 The canonical source was rejected by Bradbury with `BlockPubdataLimitReached`. The reproducible
